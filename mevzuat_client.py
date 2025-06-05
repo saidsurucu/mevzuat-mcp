@@ -11,17 +11,13 @@ import io
 from bs4 import BeautifulSoup
 from markitdown import MarkItDown
 from typing import Dict, List, Optional, Any
-
 from mevzuat_models import (
     MevzuatSearchRequest, MevzuatSearchResult, MevzuatDocument, MevzuatTur,
     MevzuatArticleNode, MevzuatArticleContent
 )
-
 logger = logging.getLogger(__name__)
 
 class MevzuatApiClient:
-    """A client to communicate with the official Turkish legislation search API."""
-    
     BASE_URL = "https://bedesten.adalet.gov.tr/mevzuat"
     HEADERS = {
         'Accept': '*/*',
@@ -31,7 +27,6 @@ class MevzuatApiClient:
         'Referer': 'https://mevzuat.adalet.gov.tr/',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
-
     def __init__(self, timeout: float = 30.0):
         self._http_client = httpx.AsyncClient(headers=self.HEADERS, timeout=timeout, follow_redirects=True)
         self._md_converter = MarkItDown()
@@ -43,13 +38,10 @@ class MevzuatApiClient:
         try:
             decoded_bytes = base64.b64decode(b64_string)
             return decoded_bytes.decode('utf-8')
-        except Exception as e:
-            logger.error(f"Base64 decoding failed: {e}")
-            return ""
+        except Exception: return ""
 
     def _markdown_from_html(self, html_content: str) -> str:
-        if not html_content:
-            return ""
+        if not html_content: return ""
         try:
             html_bytes = html_content.encode('utf-8')
             html_io = io.BytesIO(html_bytes)
@@ -57,13 +49,12 @@ class MevzuatApiClient:
             if conv_res and conv_res.text_content:
                 return conv_res.text_content.strip()
             return ""
-        except Exception as e:
-            logger.error(f"MarkItDown conversion failed: {e}. Falling back to simple text extraction.")
+        except Exception:
             soup = BeautifulSoup(html_content, 'lxml')
             return soup.get_text(separator='\n', strip=True)
 
     async def search_documents(self, request: MevzuatSearchRequest) -> MevzuatSearchResult:
-   
+        """Performs a detailed search for legislation documents."""
         payload = {
             "data": {
                 "pageSize": request.page_size,
@@ -71,21 +62,20 @@ class MevzuatApiClient:
                 "mevzuatTurList": [tur.value for tur in request.mevzuat_tur_list],
                 "sortFields": [request.sort_field.value],
                 "sortDirection": request.sort_direction.value,
-                "basliktaAra": request.search_in_title,
-                "tamCumle": request.exact_phrase,
             },
             "applicationName": "UyapMevzuat",
             "paging": True
         }
+        
         if request.mevzuat_adi:
-            if request.search_in_title:
-                payload["data"]["mevzuatAdi"] = request.mevzuat_adi
-            else:
-                payload["data"]["phrase"] = request.mevzuat_adi
+            payload["data"]["mevzuatAdi"] = request.mevzuat_adi
+        if request.phrase:
+            payload["data"]["phrase"] = request.phrase
         if request.mevzuat_no:
             payload["data"]["mevzuatNo"] = request.mevzuat_no
         if request.resmi_gazete_sayisi:
             payload["data"]["resmiGazeteSayi"] = request.resmi_gazete_sayisi
+            
         try:
             response = await self._http_client.post(f"{self.BASE_URL}/searchDocuments", json=payload)
             response.raise_for_status()
@@ -102,21 +92,17 @@ class MevzuatApiClient:
                 query_used=request.model_dump()
             )
         except httpx.HTTPStatusError as e:
-            logger.exception("HTTP error during legislation search.")
             return MevzuatSearchResult(documents=[], total_results=0, current_page=request.page_number, page_size=request.page_size, total_pages=0, query_used=request.model_dump(), error_message=f"API request failed: {e.response.status_code}")
         except Exception as e:
-            logger.exception("Generic error during legislation search.")
             return MevzuatSearchResult(documents=[], total_results=0, current_page=request.page_number, page_size=request.page_size, total_pages=0, query_used=request.model_dump(), error_message=f"An unexpected error occurred: {e}")
 
     async def get_article_tree(self, mevzuat_id: str) -> List[MevzuatArticleNode]:
-
         payload = { "data": {"mevzuatId": mevzuat_id}, "applicationName": "UyapMevzuat" }
         try:
             response = await self._http_client.post(f"{self.BASE_URL}/mevzuatMaddeTree", json=payload)
             response.raise_for_status()
             data = response.json()
-            if data.get("metadata", {}).get("FMTY") != "SUCCESS":
-                return []
+            if data.get("metadata", {}).get("FMTY") != "SUCCESS": return []
             root_node = data.get("data", {})
             return [MevzuatArticleNode.model_validate(child) for child in root_node.get("children", [])]
         except Exception as e:
@@ -124,30 +110,18 @@ class MevzuatApiClient:
             return []
 
     async def get_article_content(self, madde_id: str, mevzuat_id: str) -> MevzuatArticleContent:
-        """Retrieves the content of a single article by its ID."""
-        payload = {
-            "data": {"id": madde_id, "documentType": "MADDE"},
-            "applicationName": "UyapMevzuat"
-        }
+        payload = {"data": {"id": madde_id, "documentType": "MADDE"}, "applicationName": "UyapMevzuat"}
         try:
             response = await self._http_client.post(f"{self.BASE_URL}/getDocumentContent", json=payload)
             response.raise_for_status()
             data = response.json()
-
             if data.get("metadata", {}).get("FMTY") != "SUCCESS":
                 return MevzuatArticleContent(madde_id=madde_id, mevzuat_id=mevzuat_id, markdown_content="", error_message=data.get("metadata", {}).get("FMTE", "Failed to retrieve content."))
-
             content_data = data.get("data", {})
             b64_content = content_data.get("content", "")
             html_content = self._html_from_base64(b64_content)
             markdown_content = self._markdown_from_html(html_content)
-
-            return MevzuatArticleContent(
-                madde_id=madde_id,
-                mevzuat_id=mevzuat_id,
-                markdown_content=markdown_content
-            )
+            return MevzuatArticleContent(madde_id=madde_id, mevzuat_id=mevzuat_id, markdown_content=markdown_content)
         except Exception as e:
             logger.exception(f"Error fetching content for maddeId {madde_id}")
-
             return MevzuatArticleContent(madde_id=madde_id, mevzuat_id=mevzuat_id, markdown_content="", error_message=f"An unexpected error occurred: {e}")

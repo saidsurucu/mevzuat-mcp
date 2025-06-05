@@ -4,7 +4,6 @@ Main FastMCP server file for the Adalet Bakanlığı Mevzuat service.
 This file defines the tools exposed to the LLM and orchestrates calls
 to the MevzuatApiClient.
 """
-
 import asyncio
 import logging
 import os
@@ -47,10 +46,10 @@ mevzuat_client = MevzuatApiClient()
 
 @app.tool()
 async def search_mevzuat(
-    mevzuat_adi: Optional[str] = Field(None, description="The name of the legislation or a keyword to search for. For an exact phrase search, enclose the term in double quotes. E.g., 'ticaret' or '\"türk ceza kanunu\"'."),
+    mevzuat_adi: Optional[str] = Field(None, description="Search for this term in the LEGISLATION TITLE only. For an exact phrase search, enclose the term in double quotes."),
+    phrase: Optional[str] = Field(None, description="Search for this term in the FULL TEXT of the legislation. For an exact phrase search, enclose the term in double quotes."),
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
-    search_in_title: bool = Field(False, description="Set to true to search only within the legislation title, not the full text."),
     mevzuat_turleri: Optional[Any] = Field(None, description="Filter by specific legislation types. Should be a list of strings like [\"KANUN\", \"YONETMELIK\"]. If provided as a string, it must be a valid JSON array."),
     page_number: int = Field(1, ge=1, description="Page number for pagination."),
     page_size: int = Field(10, ge=1, le=50, description="Number of results to return per page."),
@@ -58,12 +57,15 @@ async def search_mevzuat(
     sort_direction: SortDirectionEnum = Field(SortDirectionEnum.DESC, description="Sorting direction. Possible values: DESC (descending, newest to oldest), ASC (ascending, oldest to newest).")
 ) -> MevzuatSearchResult:
     """
-    Searches for Turkish legislation (laws, regulations, etc.) on mevzuat.gov.tr.
-    Returns a paginated list of found documents.
-    Note: For an exact phrase search, enclose the term in double quotes within the 'mevzuat_adi' parameter (e.g., '"ticaret kanunu"').
+    Searches for Turkish legislation on mevzuat.gov.tr.
+    Use 'mevzuat_adi' for title-only search and 'phrase' for full-text search.
     """
-    if not mevzuat_adi and not mevzuat_no:
-        raise ToolError("You must provide either a search term ('mevzuat_adi') or a legislation number ('mevzuat_no').")
+    if not mevzuat_adi and not phrase and not mevzuat_no:
+        raise ToolError("You must provide at least one of the following search criteria: 'mevzuat_adi', 'phrase', or 'mevzuat_no'.")
+
+    # YENİ EKLENEN KONTROL
+    if mevzuat_adi and phrase:
+        raise ToolError("You cannot search by title ('mevzuat_adi') and full text ('phrase') at the same time. Please provide only one of them.")
 
     processed_turler = mevzuat_turleri
     if isinstance(mevzuat_turleri, str):
@@ -78,9 +80,9 @@ async def search_mevzuat(
 
     search_req = MevzuatSearchRequest(
         mevzuat_adi=mevzuat_adi,
+        phrase=phrase,
         mevzuat_no=mevzuat_no,
         resmi_gazete_sayisi=resmi_gazete_sayisi,
-        search_in_title=search_in_title,
         mevzuat_tur_list=processed_turler if processed_turler is not None else [tur for tur in MevzuatTurEnum],
         page_number=page_number,
         page_size=page_size,
