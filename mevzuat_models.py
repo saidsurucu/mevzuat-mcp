@@ -43,7 +43,7 @@ class MevzuatSearchRequest(BaseModel):
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette.")
     mevzuat_tur_list: List[MevzuatTurEnum] = Field(
         default_factory=lambda: [tur for tur in MevzuatTurEnum],
-        # AÇIKLAMA GÜNCELLENDİ
+        
         description="Filter by legislation type. IMPORTANT: Values must be one of the exact strings from the enum, using English characters only (e.g., 'YONETMELIK', not 'YÖNETMELİK'). Possible values: KANUN, CB_KARARNAME, YONETMELIK, CB_YONETMELIK, CB_KARAR, CB_GENELGE, KHK, TUZUK, KKY, UY, TEBLIGLER, MULGA. Defaults to all types."
     )
     page_number: int = Field(1, ge=1, description="The page number of the search results.")
