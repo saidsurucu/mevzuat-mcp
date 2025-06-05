@@ -1,0 +1,14 @@
+[project]
+name = "mevzuat-mcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "fastmcp>=2.5.1",
+    "httpx>=0.28.1",
+    "lxml>=5.4.0",
+    "markitdown>=0.1.1",
+    "pydantic>=2.11.4",
+]
