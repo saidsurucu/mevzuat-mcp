@@ -1,4 +1,10 @@
 # mevzuat_mcp_server.py
+"""
+Main FastMCP server file for the Adalet Bakanlığı Mevzuat service.
+This file defines the tools exposed to the LLM and orchestrates calls
+to the MevzuatApiClient.
+"""
+
 import asyncio
 import logging
 import os
@@ -51,6 +57,11 @@ async def search_mevzuat(
     sort_field: SortFieldEnum = Field(SortFieldEnum.RESMI_GAZETE_TARIHI, description="Field to sort results by. Possible values: RESMI_GAZETE_TARIHI, KAYIT_TARIHI, MEVZUAT_NUMARASI."),
     sort_direction: SortDirectionEnum = Field(SortDirectionEnum.DESC, description="Sorting direction. Possible values: DESC (descending, newest to oldest), ASC (ascending, oldest to newest).")
 ) -> MevzuatSearchResult:
+    """
+    Searches for Turkish legislation (laws, regulations, etc.) on mevzuat.gov.tr.
+    Returns a paginated list of found documents.
+    Note: For an exact phrase search, enclose the term in double quotes within the 'mevzuat_adi' parameter (e.g., '"ticaret kanunu"').
+    """
     if not mevzuat_adi and not mevzuat_no:
         raise ToolError("You must provide either a search term ('mevzuat_adi') or a legislation number ('mevzuat_no').")
 
@@ -95,6 +106,10 @@ async def search_mevzuat(
 
 @app.tool()
 async def get_mevzuat_article_tree(mevzuat_id: str = Field(..., description="The ID of the legislation, obtained from the 'search_mevzuat' tool. E.g., '343829'.")) -> List[MevzuatArticleNode]:
+    """
+    Retrieves the table of contents (article tree) for a specific legislation.
+    This shows the chapters, sections, and articles in a hierarchical structure.
+    """
     logger.info(f"Tool 'get_mevzuat_article_tree' called for mevzuat_id: {mevzuat_id}")
     try:
         return await mevzuat_client.get_article_tree(mevzuat_id)
@@ -104,6 +119,9 @@ async def get_mevzuat_article_tree(mevzuat_id: str = Field(..., description="The
 
 @app.tool()
 async def get_mevzuat_article_content(mevzuat_id: str = Field(..., description="The ID of the legislation, obtained from 'search_mevzuat' results."), madde_id: str = Field(..., description="The ID of the specific article (madde), obtained from the 'get_mevzuat_article_tree' tool. E.g., '2596801'.")) -> MevzuatArticleContent:
+    """
+    Retrieves the full text content of a single article of a legislation and provides it as clean Markdown text.
+    """
     logger.info(f"Tool 'get_mevzuat_article_content' called for madde_id: {madde_id}")
     try:
         return await mevzuat_client.get_article_content(madde_id, mevzuat_id)
