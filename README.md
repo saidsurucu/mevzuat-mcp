@@ -33,7 +33,7 @@ Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP iste
     * **Name:** `Mevzuat MCP`
     * **Command:**
         ```
-        uvx --from git+[https://github.com/saidsurucu/mevzuat-mcp](https://github.com/saidsurucu/mevzuat-mcp) mevzuat-mcp
+        uvx --from git+https://github.com/saidsurucu/mevzuat-mcp mevzuat-mcp
         ```
     * **Save** butonuna basarak kaydedin.
 
