@@ -37,13 +37,14 @@ class SortDirectionEnum(str, Enum):
 
 class MevzuatSearchRequest(BaseModel):
     """Request model for searching legislation documents. Used by the client."""
-    mevzuat_adi: Optional[str] = Field(None, description="Search for this term in the LEGISLATION TITLE only. For an exact phrase search, enclose the term in double quotes.")
+    mevzuat_adi: Optional[str] = Field(None, description="The name of the legislation or a keyword to search for. For an exact phrase search, enclose the term in double quotes. E.g., 'ticaret' or '\"türk ceza kanunu\"'.")
     phrase: Optional[str] = Field(None, description="Search for this term in the FULL TEXT of the legislation. For an exact phrase search, enclose the term in double quotes.")
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation.")
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette.")
     mevzuat_tur_list: List[MevzuatTurEnum] = Field(
         default_factory=lambda: [tur for tur in MevzuatTurEnum],
-        description="Filter by legislation type. Possible values: KANUN (Law), CB_KARARNAME (Presidential Decree), etc."
+        # AÇIKLAMA GÜNCELLENDİ
+        description="Filter by legislation type. IMPORTANT: Values must be one of the exact strings from the enum, using English characters only (e.g., 'YONETMELIK', not 'YÖNETMELİK'). Possible values: KANUN, CB_KARARNAME, YONETMELIK, CB_YONETMELIK, CB_KARAR, CB_GENELGE, KHK, TUZUK, KKY, UY, TEBLIGLER, MULGA. Defaults to all types."
     )
     page_number: int = Field(1, ge=1, description="The page number of the search results.")
     page_size: int = Field(10, ge=1, le=50, description="Number of results per page.")
@@ -53,15 +54,17 @@ class MevzuatSearchRequest(BaseModel):
     )
     sort_direction: SortDirectionEnum = Field(
         SortDirectionEnum.DESC,
-        description="Sorting direction. Possible values: DESC (newest to oldest), ASC (oldest to newest)."
+        description="Sorting direction. Possible values: DESC (descending, newest to oldest), ASC (ascending, oldest to newest)."
     )
-
+    
 class MevzuatTur(BaseModel):
+    """Model for the legislation type object in search results."""
     id: int
     name: str
     description: str
 
 class MevzuatDocument(BaseModel):
+    """Model for a single legislation document found in search results."""
     mevzuat_id: str = Field(..., alias="mevzuatId")
     mevzuat_no: Optional[int] = Field(None, alias="mevzuatNo")
     mevzuat_adi: str = Field(..., alias="mevzuatAdi")
@@ -71,6 +74,7 @@ class MevzuatDocument(BaseModel):
     url: Optional[str] = None
 
 class MevzuatSearchResult(BaseModel):
+    """Model for the overall search result from the legislation API."""
     documents: List[MevzuatDocument]
     total_results: int
     current_page: int
@@ -80,6 +84,7 @@ class MevzuatSearchResult(BaseModel):
     error_message: Optional[str] = None
 
 class MevzuatArticleNode(BaseModel):
+    """Recursive model for an article/section in the legislation's table of contents tree."""
     madde_id: str = Field(..., alias="maddeId")
     madde_no: Optional[int] = Field(None, alias="maddeNo")
     title: str
@@ -90,6 +95,7 @@ class MevzuatArticleNode(BaseModel):
 MevzuatArticleNode.model_rebuild()
 
 class MevzuatArticleContent(BaseModel):
+    """Model for the content of a single legislation article."""
     madde_id: str
     mevzuat_id: str
     markdown_content: str
