@@ -9,7 +9,7 @@ import logging
 import os
 import json
 from pydantic import Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 LOG_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 if not os.path.exists(LOG_DIRECTORY):
@@ -46,11 +46,12 @@ mevzuat_client = MevzuatApiClient()
 
 @app.tool()
 async def search_mevzuat(
-    mevzuat_adi: Optional[str] = Field(None, description="Search for this term in the LEGISLATION TITLE only. For an exact phrase search, enclose the term in double quotes."),
+    mevzuat_adi: Optional[str] = Field(None, description="The name of the legislation or a keyword to search for. For an exact phrase search, enclose the term in double quotes."),
     phrase: Optional[str] = Field(None, description="Search for this term in the FULL TEXT of the legislation. For an exact phrase search, enclose the term in double quotes."),
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
-    mevzuat_turleri: Optional[Any] = Field(None, description="Filter by specific legislation types. Should be a list of strings like [\"KANUN\", \"YONETMELIK\"]. If provided as a string, it must be a valid JSON array."),
+    # AÇIKLAMA GÜNCELLENDİ: Tüm olası değerler manuel olarak eklendi.
+    mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. IMPORTANT: Values must be one of the exact strings from this list: KANUN, CB_KARARNAME, YONETMELIK, CB_YONETMELIK, CB_KARAR, CB_GENELGE, KHK, TUZUK, KKY, UY, TEBLIGLER, MULGA. A JSON-formatted string of this list is also acceptable."),
     page_number: int = Field(1, ge=1, description="Page number for pagination."),
     page_size: int = Field(10, ge=1, le=50, description="Number of results to return per page."),
     sort_field: SortFieldEnum = Field(SortFieldEnum.RESMI_GAZETE_TARIHI, description="Field to sort results by. Possible values: RESMI_GAZETE_TARIHI, KAYIT_TARIHI, MEVZUAT_NUMARASI."),
@@ -63,7 +64,6 @@ async def search_mevzuat(
     if not mevzuat_adi and not phrase and not mevzuat_no:
         raise ToolError("You must provide at least one of the following search criteria: 'mevzuat_adi', 'phrase', or 'mevzuat_no'.")
 
-    # YENİ EKLENEN KONTROL
     if mevzuat_adi and phrase:
         raise ToolError("You cannot search by title ('mevzuat_adi') and full text ('phrase') at the same time. Please provide only one of them.")
 
