@@ -36,7 +36,7 @@ Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP iste
         uvx --from git+https://github.com/saidsurucu/mevzuat-mcp mevzuat-mcp
         ```
     * **Save** butonuna basarak kaydedin.
-
+![5ire ayarları](./5ire-settings.png)
 * Şimdi **Tools** altında **Mevzuat MCP**'yi görüyor olmalısınız. Üstüne geldiğinizde sağda çıkan butona tıklayıp etkinleştirin (yeşil ışık yanmalı).
 * Artık Mevzuat MCP ile konuşabilirsiniz.
 
