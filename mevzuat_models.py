@@ -1,10 +1,16 @@
 # mevzuat_models.py
+"""
+Pydantic models for the Adalet Bakanlığı Mevzuat MCP server.
+Defines data structures for search requests, search results, and document content.
+"""
+
 from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Optional, Dict, Any
 from enum import Enum
 import datetime
 
 class MevzuatTurEnum(str, Enum):
+    """Enum for legislation types available in the search."""
     KANUN = "KANUN"
     CB_KARARNAME = "CB_KARARNAME"
     YONETMELIK = "YONETMELIK"
@@ -19,15 +25,18 @@ class MevzuatTurEnum(str, Enum):
     MULGA = "MULGA"
 
 class SortFieldEnum(str, Enum):
+    """Enum for sorting fields."""
     RESMI_GAZETE_TARIHI = "RESMI_GAZETE_TARIHI"
     KAYIT_TARIHI = "KAYIT_TARIHI"
     MEVZUAT_NUMARASI = "MEVZUAT_NUMARASI"
 
 class SortDirectionEnum(str, Enum):
+    """Enum for sort direction."""
     DESC = "desc"
     ASC = "asc"
 
 class MevzuatSearchRequest(BaseModel):
+    """Request model for searching legislation documents. Used by the client."""
     mevzuat_adi: Optional[str] = Field(None, description="The name of the legislation or a keyword to search for. For an exact phrase search, enclose the term in double quotes. E.g., 'ticaret' or '\"türk ceza kanunu\"'.")
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation.")
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette.")
@@ -49,11 +58,13 @@ class MevzuatSearchRequest(BaseModel):
     )
 
 class MevzuatTur(BaseModel):
+    """Model for the legislation type object in search results."""
     id: int
     name: str
     description: str
 
 class MevzuatDocument(BaseModel):
+    """Model for a single legislation document found in search results."""
     mevzuat_id: str = Field(..., alias="mevzuatId")
     mevzuat_no: Optional[int] = Field(None, alias="mevzuatNo")
     mevzuat_adi: str = Field(..., alias="mevzuatAdi")
@@ -63,6 +74,7 @@ class MevzuatDocument(BaseModel):
     url: Optional[str] = None
 
 class MevzuatSearchResult(BaseModel):
+    """Model for the overall search result from the legislation API."""
     documents: List[MevzuatDocument]
     total_results: int
     current_page: int
@@ -72,6 +84,7 @@ class MevzuatSearchResult(BaseModel):
     error_message: Optional[str] = None
 
 class MevzuatArticleNode(BaseModel):
+    """Recursive model for an article/section in the legislation's table of contents tree."""
     madde_id: str = Field(..., alias="maddeId")
     madde_no: Optional[int] = Field(None, alias="maddeNo")
     title: str
@@ -82,6 +95,7 @@ class MevzuatArticleNode(BaseModel):
 MevzuatArticleNode.model_rebuild()
 
 class MevzuatArticleContent(BaseModel):
+    """Model for the content of a single legislation article."""
     madde_id: str
     mevzuat_id: str
     markdown_content: str
