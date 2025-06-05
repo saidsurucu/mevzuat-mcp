@@ -50,12 +50,14 @@ async def search_mevzuat(
     phrase: Optional[str] = Field(None, description="Search for this term in the FULL TEXT of the legislation. For an exact phrase search, enclose the term in double quotes."),
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
-    # AÇIKLAMA GÜNCELLENDİ: Tüm olası değerler manuel olarak eklendi.
-    mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. IMPORTANT: Values must be one of the exact strings from this list: KANUN, CB_KARARNAME, YONETMELIK, CB_YONETMELIK, CB_KARAR, CB_GENELGE, KHK, TUZUK, KKY, UY, TEBLIGLER, MULGA. A JSON-formatted string of this list is also acceptable."),
+    # AÇIKLAMA GÜNCELLENDİ
+    mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. IMPORTANT: Provide a list of exact enum values. Possible values: KANUN (Law - Kanun), CB_KARARNAME (Presidential Decree - Cumhurbaşkanlığı Kararnamesi), YONETMELIK (Regulation - Yönetmelik), CB_YONETMELIK (Presidential Regulation - Cumhurbaşkanlığı Yönetmeliği), CB_KARAR (Presidential Decision - Cumhurbaşkanlığı Kararı), CB_GENELGE (Presidential Circular - Cumhurbaşkanlığı Genelgesi), KHK (Decree Law - Kanun Hükmünde Kararname), TUZUK (Statute/Bylaw - Tüzük), KKY (Institutional and Organizational Regulations - Kurum ve Kuruluş Yönetmelikleri), UY (Procedures and Regulations - Usul ve Yönetmelikler), TEBLIGLER (Communiqué - Tebliğler), MULGA (Repealed - Mülga). A JSON-formatted string of this list is also acceptable."),
     page_number: int = Field(1, ge=1, description="Page number for pagination."),
     page_size: int = Field(10, ge=1, le=50, description="Number of results to return per page."),
-    sort_field: SortFieldEnum = Field(SortFieldEnum.RESMI_GAZETE_TARIHI, description="Field to sort results by. Possible values: RESMI_GAZETE_TARIHI, KAYIT_TARIHI, MEVZUAT_NUMARASI."),
-    sort_direction: SortDirectionEnum = Field(SortDirectionEnum.DESC, description="Sorting direction. Possible values: DESC (descending, newest to oldest), ASC (ascending, oldest to newest).")
+    # AÇIKLAMA GÜNCELLENDİ
+    sort_field: SortFieldEnum = Field(SortFieldEnum.RESMI_GAZETE_TARIHI, description="Field to sort results by. Possible values: RESMI_GAZETE_TARIHI (Official Gazette Date - Resmi Gazete Tarihi), KAYIT_TARIHI (Registration Date - Kayıt Tarihi), MEVZUAT_NUMARASI (Legislation Number - Mevzuat Numarası)."),
+    # AÇIKLAMA GÜNCELLENDİ
+    sort_direction: SortDirectionEnum = Field(SortDirectionEnum.DESC, description="Sorting direction. Possible values: DESC (descending, newest to oldest - Azalan, yeniden eskiye), ASC (ascending, oldest to newest - Artan, eskiden yeniye).")
 ) -> MevzuatSearchResult:
     """
     Searches for Turkish legislation on mevzuat.gov.tr.
