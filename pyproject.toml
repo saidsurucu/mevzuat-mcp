@@ -8,6 +8,21 @@ version = "0.1.0"
 description = "MCP Server for Turkish Legislation"
 readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Said Surucu", email = "saidsrc@gmail.com"}
+]
+keywords = ["mcp", "mevzuat", "turkish-law", "legislation", "claude", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
 dependencies = [
     "fastmcp>=2.6.0",
     "pydantic>=2.7.0",
@@ -16,6 +31,11 @@ dependencies = [
     "lxml>=5.2.0",
     "markitdown>=0.1.1",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/saidsurucu/mevzuat-mcp"
+"Bug Tracker" = "https://github.com/saidsurucu/mevzuat-mcp/issues"
+"Repository" = "https://github.com/saidsurucu/mevzuat-mcp"
 
 [project.scripts]
 mevzuat-mcp = "mevzuat_mcp_server:main"
