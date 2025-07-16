@@ -30,17 +30,17 @@ class MevzuatSearchRequest(BaseModel):
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette.")
     mevzuat_tur_list: List[MevzuatTurEnum] = Field(
         default_factory=lambda: ["KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA"],
-        description="Filter by legislation type. IMPORTANT: Values must be one of the exact strings from the enum, using English characters only (e.g., 'YONETMELIK', not 'YÖNETMELİK'). Possible values: KANUN, CB_KARARNAME, YONETMELIK, CB_YONETMELIK, CB_KARAR, CB_GENELGE, KHK, TUZUK, KKY, UY, TEBLIGLER, MULGA. Defaults to all types."
+        description="Filter by legislation type. Defaults to all types."
     )
     page_number: int = Field(1, ge=1, description="The page number of the search results.")
     page_size: int = Field(10, ge=1, le=50, description="Number of results per page.")
     sort_field: SortFieldEnum = Field(
         "RESMI_GAZETE_TARIHI",
-        description="Field to sort the results by. Possible values: RESMI_GAZETE_TARIHI, KAYIT_TARIHI, MEVZUAT_NUMARASI."
+        description="Field to sort the results by."
     )
     sort_direction: SortDirectionEnum = Field(
         "desc",
-        description="Sorting direction. Possible values: DESC (descending, newest to oldest), ASC (ascending, oldest to newest)."
+        description="Sorting direction."
     )
     
 class MevzuatTur(BaseModel):

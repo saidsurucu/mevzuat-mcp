@@ -51,13 +51,13 @@ async def search_mevzuat(
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
     # AÇIKLAMA GÜNCELLENDİ
-    mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. IMPORTANT: Provide a list of exact enum values. Possible values: KANUN (Law - Kanun), CB_KARARNAME (Presidential Decree - Cumhurbaşkanlığı Kararnamesi), YONETMELIK (Regulation - Yönetmelik), CB_YONETMELIK (Presidential Regulation - Cumhurbaşkanlığı Yönetmeliği), CB_KARAR (Presidential Decision - Cumhurbaşkanlığı Kararı), CB_GENELGE (Presidential Circular - Cumhurbaşkanlığı Genelgesi), KHK (Decree Law - Kanun Hükmünde Kararname), TUZUK (Statute/Bylaw - Tüzük), KKY (Institutional and Organizational Regulations - Kurum ve Kuruluş Yönetmelikleri), UY (Procedures and Regulations - Usul ve Yönetmelikler), TEBLIGLER (Communiqué - Tebliğler), MULGA (Repealed - Mülga). A JSON-formatted string of this list is also acceptable."),
+    mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. A JSON-formatted string of this list is also acceptable."),
     page_number: int = Field(1, ge=1, description="Page number for pagination."),
     page_size: int = Field(10, ge=1, le=50, description="Number of results to return per page."),
     # AÇIKLAMA GÜNCELLENDİ
-    sort_field: SortFieldEnum = Field("RESMI_GAZETE_TARIHI", description="Field to sort results by. Possible values: RESMI_GAZETE_TARIHI (Official Gazette Date - Resmi Gazete Tarihi), KAYIT_TARIHI (Registration Date - Kayıt Tarihi), MEVZUAT_NUMARASI (Legislation Number - Mevzuat Numarası)."),
+    sort_field: SortFieldEnum = Field("RESMI_GAZETE_TARIHI", description="Field to sort results by."),
     # AÇIKLAMA GÜNCELLENDİ
-    sort_direction: SortDirectionEnum = Field("desc", description="Sorting direction. Possible values: DESC (descending, newest to oldest - Azalan, yeniden eskiye), ASC (ascending, oldest to newest - Artan, eskiden yeniye).")
+    sort_direction: SortDirectionEnum = Field("desc", description="Sorting direction.")
 ) -> MevzuatSearchResult:
     """
     Searches for Turkish legislation on mevzuat.gov.tr.
