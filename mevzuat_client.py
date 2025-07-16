@@ -59,9 +59,9 @@ class MevzuatApiClient:
             "data": {
                 "pageSize": request.page_size,
                 "pageNumber": request.page_number,
-                "mevzuatTurList": [tur.value for tur in request.mevzuat_tur_list],
-                "sortFields": [request.sort_field.value],
-                "sortDirection": request.sort_direction.value,
+                "mevzuatTurList": request.mevzuat_tur_list,
+                "sortFields": [request.sort_field],
+                "sortDirection": request.sort_direction,
             },
             "applicationName": "UyapMevzuat",
             "paging": True
