@@ -113,28 +113,38 @@ async def get_mevzuat_article_tree(mevzuat_id: str = Field(..., description="The
     """
     Retrieves the table of contents (article tree) for a specific legislation.
     This shows the chapters, sections, and articles in a hierarchical structure.
+    If the tree is empty, it means the document doesn't have a hierarchical structure - you can use the mevzuat_id directly as the madde_id for get_mevzuat_article_content.
     """
     logger.info(f"Tool 'get_mevzuat_article_tree' called for mevzuat_id: {mevzuat_id}")
     try:
-        return await mevzuat_client.get_article_tree(mevzuat_id)
+        article_tree = await mevzuat_client.get_article_tree(mevzuat_id)
+        if not article_tree:
+            logger.info(f"Article tree is empty for mevzuat_id {mevzuat_id}. Document may not have hierarchical structure.")
+        return article_tree
     except Exception as e:
         logger.exception(f"Error in tool 'get_mevzuat_article_tree' for id {mevzuat_id}.")
         raise ToolError(f"Failed to retrieve article tree: {str(e)}")
 
 @app.tool()
-async def get_mevzuat_article_content(mevzuat_id: str = Field(..., description="The ID of the legislation, obtained from 'search_mevzuat' results."), madde_id: str = Field(..., description="The ID of the specific article (madde), obtained from the 'get_mevzuat_article_tree' tool. E.g., '2596801'.")) -> MevzuatArticleContent:
+async def get_mevzuat_article_content(mevzuat_id: str = Field(..., description="The ID of the legislation, obtained from 'search_mevzuat' results."), madde_id: str = Field(..., description="The ID of the specific article (madde), obtained from the 'get_mevzuat_article_tree' tool. If article tree is empty, use the mevzuat_id as madde_id to get the full document content.")) -> MevzuatArticleContent:
     """
     Retrieves the full text content of a single article of a legislation and provides it as clean Markdown text.
+    If the article tree is empty (no hierarchical structure), use the mevzuat_id as the madde_id parameter to get the full document content.
     """
     logger.info(f"Tool 'get_mevzuat_article_content' called for madde_id: {madde_id}")
     try:
-        return await mevzuat_client.get_article_content(madde_id, mevzuat_id)
+        # If madde_id equals mevzuat_id, try to get full document content
+        if madde_id == mevzuat_id:
+            return await mevzuat_client.get_full_document_content(mevzuat_id)
+        else:
+            return await mevzuat_client.get_article_content(madde_id, mevzuat_id)
     except Exception as e:
         logger.exception(f"Error in tool 'get_mevzuat_article_content' for id {madde_id}.")
         return MevzuatArticleContent(
             madde_id=madde_id, mevzuat_id=mevzuat_id,
             markdown_content="", error_message=f"An unexpected error occurred: {str(e)}"
         )
+
 
 def main():
     logger.info(f"Starting {app.name} server...")

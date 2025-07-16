@@ -125,3 +125,50 @@ class MevzuatApiClient:
         except Exception as e:
             logger.exception(f"Error fetching content for maddeId {madde_id}")
             return MevzuatArticleContent(madde_id=madde_id, mevzuat_id=mevzuat_id, markdown_content="", error_message=f"An unexpected error occurred: {e}")
+    
+    async def get_full_document_content(self, mevzuat_id: str) -> MevzuatArticleContent:
+        """Retrieves the full content of a legislation document as a single unit."""
+        payload = {"data": {"id": mevzuat_id, "documentType": "MEVZUAT"}, "applicationName": "UyapMevzuat"}
+        try:
+            response = await self._http_client.post(f"{self.BASE_URL}/getDocumentContent", json=payload)
+            response.raise_for_status()
+            data = response.json()
+            if data.get("metadata", {}).get("FMTY") != "SUCCESS":
+                return MevzuatArticleContent(
+                    madde_id=mevzuat_id, mevzuat_id=mevzuat_id,
+                    markdown_content="", 
+                    error_message=data.get("metadata", {}).get("FMTE", "Failed to retrieve full document content.")
+                )
+            
+            content_data = data.get("data", {})
+            b64_content = content_data.get("content", "")
+            
+            # Handle PDF content - try to extract if it's a PDF
+            if b64_content.startswith("JVBERi0"):  # PDF header in base64
+                try:
+                    import base64
+                    pdf_bytes = base64.b64decode(b64_content)
+                    # Use markitdown to convert PDF to markdown
+                    from markitdown import MarkItDown
+                    md = MarkItDown()
+                    result = md.convert_stream(pdf_bytes, file_extension=".pdf")
+                    markdown_content = result.text_content
+                except Exception as pdf_error:
+                    logger.warning(f"PDF extraction failed for {mevzuat_id}: {pdf_error}")
+                    markdown_content = f"PDF content available but could not be extracted. Content length: {len(b64_content)} characters."
+            else:
+                # Handle HTML content
+                html_content = self._html_from_base64(b64_content)
+                markdown_content = self._markdown_from_html(html_content)
+            
+            return MevzuatArticleContent(
+                madde_id=mevzuat_id, mevzuat_id=mevzuat_id,
+                markdown_content=markdown_content
+            )
+        except Exception as e:
+            logger.exception(f"Error fetching full document content for mevzuatId {mevzuat_id}")
+            return MevzuatArticleContent(
+                madde_id=mevzuat_id, mevzuat_id=mevzuat_id,
+                markdown_content="", 
+                error_message=f"An unexpected error occurred: {str(e)}"
+            )
