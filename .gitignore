@@ -160,3 +160,6 @@ cython_debug/
 #.idea/
 hello.py
 test_mevzuat_server.py
+
+# Test files
+test_*.py
