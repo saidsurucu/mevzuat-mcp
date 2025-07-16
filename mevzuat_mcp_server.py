@@ -47,7 +47,7 @@ mevzuat_client = MevzuatApiClient()
 @app.tool()
 async def search_mevzuat(
     # mevzuat_adi: Optional[str] = Field(None, description="Search in legislation titles/names only. Cannot be used together with 'phrase' parameter. For exact phrase search, enclose in double quotes."),
-    phrase: Optional[str] = Field(None, description="Turkish search phrase. Turkish full-text search. Boolean: AND, OR, NOT. Required/prohibited: +term, -term. Phrase: \"exact phrase\", \"phrase\"~5 (proximity). Wildcard: term*, t?rm. Fuzzy: term~, term~0.8. Regex: /pattern/ with ., *, +, ?, [abc], [a-z], [^0-9], {n,m}, (group), |, ^, $, \\escape, word boundaries \\b, case flag (?i). Boost: term^2."),
+    phrase: Optional[str] = Field(None, description="Turkish full-text search phrase. Supports multiple search operators:\\n\\nBoolean operators: AND, OR, NOT\\nRequired/prohibited terms: +required -prohibited\\nExact phrases: \\\"exact phrase\\\"\\nProximity search: \\\"word1 word2\\\"~5\\nWildcard search: word* or w?rd\\nFuzzy search: word~ or word~0.8\\nTerm boosting: important^2\\nRegex patterns: /[a-z]+/ with full regex syntax\\n\\nExamples:\\n- Basic: mahkeme\\n- Boolean: mahkeme AND karar\\n- Required: +mahkeme -eski\\n- Fuzzy: mahkeme~\\n- Wildcard: mah*\\n- Regex: /(mahkeme|karar)/"),
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
     # AÇIKLAMA GÜNCELLENDİ
