@@ -47,7 +47,7 @@ mevzuat_client = MevzuatApiClient()
 @app.tool()
 async def search_mevzuat(
     mevzuat_adi: Optional[str] = Field(None, description="The name of the legislation or a keyword to search for. For an exact phrase search, enclose the term in double quotes."),
-    phrase: Optional[str] = Field(None, description="Turkish search phrase. Use fuzzy match, wildcard, and regex when necessary. USE: `+` (required term), `-` (exclude term), `*` (wildcard), `\" \"` (exact phrase), `( )` (grouping), `~` (fuzzy search), `/pattern/` (basic regex with `.` any char, `+` one or more, `?` optional, `[abc]` character class, `{n,m}` repetition, `|` alternation); DO NOT USE: AND, OR, NOT boolean operators, `^$` anchors, `\\b` word boundaries, `()` regex groups, `\\d\\w\\s` special chars, `[TO]` range queries."),
+    phrase: Optional[str] = Field(None, description="Turkish search phrase for full-text search. Supports boolean operators: AND, OR, NOT. Also supports: `+` (required term), `-` (exclude term), `*` (wildcard), `\" \"` (exact phrase), `~` (fuzzy search). Regex: `/pattern/` with `.` (any char), `*` (zero or more), `+` (one or more), `?` (optional), `[abc]` (character class), `{n,m}` (repetition), `|` (alternation). Uses Apache Solr search syntax."),
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
     # AÇIKLAMA GÜNCELLENDİ
@@ -69,6 +69,48 @@ async def search_mevzuat(
     if mevzuat_adi and phrase:
         raise ToolError("You cannot search by title ('mevzuat_adi') and full text ('phrase') at the same time. Please provide only one of them.")
 
+    # Convert boolean operators to Solr syntax
+    def convert_boolean_operators(phrase_text: str) -> str:
+        if not phrase_text:
+            return phrase_text
+        
+        import re
+        text = phrase_text
+        
+        # Convert AND to +
+        text = re.sub(r'\s+AND\s+', ' +', text)
+        
+        # Convert NOT to -
+        text = re.sub(r'\s+NOT\s+', ' -', text)
+        
+        # Convert OR chains to regex
+        def replace_or_chain(text):
+            while 'OR' in text:
+                # Match quoted terms separated by OR
+                match = re.search(r'"([^"]+)"\s+OR\s+"([^"]+)"(?:\s+OR\s+"([^"]+)")*', text)
+                if match:
+                    # Extract all quoted terms in the OR chain
+                    full_match = match.group(0)
+                    terms = re.findall(r'"([^"]+)"', full_match)
+                    # Convert to regex alternation
+                    regex_pattern = f"/({'|'.join(terms)})/"
+                    text = text.replace(full_match, regex_pattern, 1)
+                else:
+                    # Handle simple word OR word
+                    simple_or = re.search(r'(\w+)\s+OR\s+(\w+)', text)
+                    if simple_or:
+                        word1, word2 = simple_or.groups()
+                        regex_pattern = f"/({word1}|{word2})/"
+                        text = text.replace(simple_or.group(0), regex_pattern, 1)
+                    else:
+                        break
+            return text
+        
+        return replace_or_chain(text)
+    
+    # Process phrase with boolean operators
+    processed_phrase = convert_boolean_operators(phrase) if phrase else phrase
+
     processed_turler = mevzuat_turleri
     if isinstance(mevzuat_turleri, str):
         try:
@@ -82,7 +124,7 @@ async def search_mevzuat(
 
     search_req = MevzuatSearchRequest(
         mevzuat_adi=mevzuat_adi,
-        phrase=phrase,
+        phrase=processed_phrase,
         mevzuat_no=mevzuat_no,
         resmi_gazete_sayisi=resmi_gazete_sayisi,
         mevzuat_tur_list=processed_turler if processed_turler is not None else ["KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA"],
