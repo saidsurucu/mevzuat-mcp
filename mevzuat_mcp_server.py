@@ -46,8 +46,8 @@ mevzuat_client = MevzuatApiClient()
 
 @app.tool()
 async def search_mevzuat(
-    mevzuat_adi: Optional[str] = Field(None, description="The name of the legislation or a keyword to search for. For an exact phrase search, enclose the term in double quotes."),
-    phrase: Optional[str] = Field(None, description="Turkish full-text search. Boolean: AND, OR, NOT. Required/prohibited: +term, -term. Phrase: \"exact phrase\", \"phrase\"~5 (proximity). Wildcard: term*, t?rm. Fuzzy: term~, term~0.8. Regex: /pattern/ with ., *, +, ?, [abc], [a-z], [^0-9], {n,m}, (group), |, ^, $, \\escape, word boundaries \\b, case flag (?i). Boost: term^2."),
+    mevzuat_adi: Optional[str] = Field(None, description="Search in legislation titles/names only. Cannot be used together with 'phrase' parameter. For exact phrase search, enclose in double quotes."),
+    phrase: Optional[str] = Field(None, description="Search in legislation content/text only. Cannot be used together with 'mevzuat_adi' parameter. Turkish full-text search. Boolean: AND, OR, NOT. Required/prohibited: +term, -term. Phrase: \"exact phrase\", \"phrase\"~5 (proximity). Wildcard: term*, t?rm. Fuzzy: term~, term~0.8. Regex: /pattern/ with ., *, +, ?, [abc], [a-z], [^0-9], {n,m}, (group), |, ^, $, \\escape, word boundaries \\b, case flag (?i). Boost: term^2."),
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
     # AÇIKLAMA GÜNCELLENDİ
@@ -61,7 +61,8 @@ async def search_mevzuat(
 ) -> MevzuatSearchResult:
     """
     Searches for Turkish legislation on mevzuat.gov.tr.
-    Use 'mevzuat_adi' for title-only search and 'phrase' for full-text search.
+    Use 'mevzuat_adi' for title-only search and 'phrase' for full-text content search.
+    These two parameters cannot be used together.
     """
     if not mevzuat_adi and not phrase and not mevzuat_no:
         raise ToolError("You must provide at least one of the following search criteria: 'mevzuat_adi', 'phrase', or 'mevzuat_no'.")
