@@ -47,7 +47,7 @@ mevzuat_client = MevzuatApiClient()
 @app.tool()
 async def search_mevzuat(
     mevzuat_adi: Optional[str] = Field(None, description="The name of the legislation or a keyword to search for. For an exact phrase search, enclose the term in double quotes."),
-    phrase: Optional[str] = Field(None, description="Turkish search phrase for full-text search. Supports boolean operators: AND, OR, NOT. Also supports: `+` (required term), `-` (exclude term), `*` (wildcard), `\" \"` (exact phrase), `~` (fuzzy search). Regex: `/pattern/` with `.` (any char), `*` (zero or more), `+` (one or more), `?` (optional), `[abc]` (character class), `{n,m}` (repetition), `|` (alternation). Uses Apache Solr search syntax."),
+    phrase: Optional[str] = Field(None, description="Turkish search phrase for full-text search. Supports boolean operators (AND, OR, NOT) and Apache Solr regex search syntax."),
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
     # AÇIKLAMA GÜNCELLENDİ
