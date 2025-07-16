@@ -4,36 +4,23 @@ Pydantic models for the Adalet Bakanlığı Mevzuat MCP server.
 Defines data structures for search requests, search results, and document content.
 """
 
-from pydantic import BaseModel, Field, HttpUrl
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, HttpUrl, PlainSerializer, ConfigDict
+from typing import List, Optional, Dict, Any, Annotated, Literal
 from enum import Enum
 import datetime
 
-class MevzuatTurEnum(str, Enum):
-    """Enum for legislation types available in the search."""
-    KANUN = "KANUN"
-    CB_KARARNAME = "CB_KARARNAME"
-    YONETMELIK = "YONETMELIK"
-    CB_YONETMELIK = "CB_YONETMELIK"
-    CB_KARAR = "CB_KARAR"
-    CB_GENELGE = "CB_GENELGE"
-    KHK = "KHK"
-    TUZUK = "TUZUK"
-    KKY = "KKY"
-    UY = "UY"
-    TEBLIGLER = "TEBLIGLER"
-    MULGA = "MULGA"
+# Using Literal types instead of Enums to avoid $ref references
+MevzuatTurEnum = Literal[
+    "KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", 
+    "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", 
+    "TEBLIGLER", "MULGA"
+]
 
-class SortFieldEnum(str, Enum):
-    """Enum for sorting fields."""
-    RESMI_GAZETE_TARIHI = "RESMI_GAZETE_TARIHI"
-    KAYIT_TARIHI = "KAYIT_TARIHI"
-    MEVZUAT_NUMARASI = "MEVZUAT_NUMARASI"
+SortFieldEnum = Literal[
+    "RESMI_GAZETE_TARIHI", "KAYIT_TARIHI", "MEVZUAT_NUMARASI"
+]
 
-class SortDirectionEnum(str, Enum):
-    """Enum for sort direction."""
-    DESC = "desc"
-    ASC = "asc"
+SortDirectionEnum = Literal["desc", "asc"]
 
 class MevzuatSearchRequest(BaseModel):
     """Request model for searching legislation documents. Used by the client."""
@@ -42,18 +29,17 @@ class MevzuatSearchRequest(BaseModel):
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation.")
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette.")
     mevzuat_tur_list: List[MevzuatTurEnum] = Field(
-        default_factory=lambda: [tur for tur in MevzuatTurEnum],
-        
+        default_factory=lambda: ["KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA"],
         description="Filter by legislation type. IMPORTANT: Values must be one of the exact strings from the enum, using English characters only (e.g., 'YONETMELIK', not 'YÖNETMELİK'). Possible values: KANUN, CB_KARARNAME, YONETMELIK, CB_YONETMELIK, CB_KARAR, CB_GENELGE, KHK, TUZUK, KKY, UY, TEBLIGLER, MULGA. Defaults to all types."
     )
     page_number: int = Field(1, ge=1, description="The page number of the search results.")
     page_size: int = Field(10, ge=1, le=50, description="Number of results per page.")
     sort_field: SortFieldEnum = Field(
-        SortFieldEnum.RESMI_GAZETE_TARIHI,
+        "RESMI_GAZETE_TARIHI",
         description="Field to sort the results by. Possible values: RESMI_GAZETE_TARIHI, KAYIT_TARIHI, MEVZUAT_NUMARASI."
     )
     sort_direction: SortDirectionEnum = Field(
-        SortDirectionEnum.DESC,
+        "desc",
         description="Sorting direction. Possible values: DESC (descending, newest to oldest), ASC (ascending, oldest to newest)."
     )
     

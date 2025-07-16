@@ -36,38 +36,6 @@ from mevzuat_models import (
     MevzuatArticleNode, MevzuatArticleContent
 )
 
-def flatten_schema(schema):
-    """Flatten $ref references in a JSON schema to make it more LLM-friendly"""
-    if '$defs' not in schema:
-        return schema
-    
-    defs = schema['$defs']
-    
-    def replace_refs(obj):
-        if isinstance(obj, dict):
-            if '$ref' in obj:
-                ref_path = obj['$ref']
-                if ref_path.startswith('#/$defs/'):
-                    def_name = ref_path.split('/')[-1]
-                    if def_name in defs:
-                        result = defs[def_name].copy()
-                        for k, v in obj.items():
-                            if k != '$ref':
-                                result[k] = v
-                        return result
-                return obj
-            else:
-                return {k: replace_refs(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [replace_refs(item) for item in obj]
-        return obj
-    
-    flattened = replace_refs(schema)
-    if '$defs' in flattened:
-        del flattened['$defs']
-    
-    return flattened
-
 app = FastMCP(
     name="MevzuatGovTrMCP",
     instructions="MCP server for Adalet Bakanlığı Mevzuat Bilgi Sistemi. Allows detailed searching of Turkish legislation and retrieving the content of specific articles.",
@@ -87,9 +55,9 @@ async def search_mevzuat(
     page_number: int = Field(1, ge=1, description="Page number for pagination."),
     page_size: int = Field(10, ge=1, le=50, description="Number of results to return per page."),
     # AÇIKLAMA GÜNCELLENDİ
-    sort_field: SortFieldEnum = Field(SortFieldEnum.RESMI_GAZETE_TARIHI, description="Field to sort results by. Possible values: RESMI_GAZETE_TARIHI (Official Gazette Date - Resmi Gazete Tarihi), KAYIT_TARIHI (Registration Date - Kayıt Tarihi), MEVZUAT_NUMARASI (Legislation Number - Mevzuat Numarası)."),
+    sort_field: SortFieldEnum = Field("RESMI_GAZETE_TARIHI", description="Field to sort results by. Possible values: RESMI_GAZETE_TARIHI (Official Gazette Date - Resmi Gazete Tarihi), KAYIT_TARIHI (Registration Date - Kayıt Tarihi), MEVZUAT_NUMARASI (Legislation Number - Mevzuat Numarası)."),
     # AÇIKLAMA GÜNCELLENDİ
-    sort_direction: SortDirectionEnum = Field(SortDirectionEnum.DESC, description="Sorting direction. Possible values: DESC (descending, newest to oldest - Azalan, yeniden eskiye), ASC (ascending, oldest to newest - Artan, eskiden yeniye).")
+    sort_direction: SortDirectionEnum = Field("desc", description="Sorting direction. Possible values: DESC (descending, newest to oldest - Azalan, yeniden eskiye), ASC (ascending, oldest to newest - Artan, eskiden yeniye).")
 ) -> MevzuatSearchResult:
     """
     Searches for Turkish legislation on mevzuat.gov.tr.
@@ -117,7 +85,7 @@ async def search_mevzuat(
         phrase=phrase,
         mevzuat_no=mevzuat_no,
         resmi_gazete_sayisi=resmi_gazete_sayisi,
-        mevzuat_tur_list=processed_turler if processed_turler is not None else [tur for tur in MevzuatTurEnum],
+        mevzuat_tur_list=processed_turler if processed_turler is not None else ["KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA"],
         page_number=page_number,
         page_size=page_size,
         sort_field=sort_field,
