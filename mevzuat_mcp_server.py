@@ -108,45 +108,6 @@ async def search_mevzuat(
         
         text = replace_or_chain(text)
         
-        # Convert consecutive space-separated words to OR regex
-        # Find sequences of words that are not operators
-        tokens = text.split()
-        result_tokens = []
-        current_word_group = []
-        
-        for token in tokens:
-            # If token starts with + or -, it's an operator
-            if re.match(r'^[+\-]', token):
-                # Process any accumulated word group first
-                if len(current_word_group) > 1:
-                    result_tokens.append(f"/({'|'.join(current_word_group)})/")
-                elif len(current_word_group) == 1:
-                    result_tokens.append(current_word_group[0])
-                current_word_group = []
-                # Add the operator
-                result_tokens.append(token)
-            # If token has special chars, treat separately
-            elif re.search(r'["/~]', token):
-                # Process any accumulated word group first
-                if len(current_word_group) > 1:
-                    result_tokens.append(f"/({'|'.join(current_word_group)})/")
-                elif len(current_word_group) == 1:
-                    result_tokens.append(current_word_group[0])
-                current_word_group = []
-                # Add the special token
-                result_tokens.append(token)
-            else:
-                # Regular word, add to current group
-                current_word_group.append(token)
-        
-        # Process final word group
-        if len(current_word_group) > 1:
-            result_tokens.append(f"/({'|'.join(current_word_group)})/")
-        elif len(current_word_group) == 1:
-            result_tokens.append(current_word_group[0])
-        
-        text = ' '.join(result_tokens)
-        
         return text
     
     # Process phrase with boolean operators
