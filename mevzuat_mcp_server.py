@@ -47,7 +47,7 @@ mevzuat_client = MevzuatApiClient()
 @app.tool()
 async def search_mevzuat(
     # mevzuat_adi: Optional[str] = Field(None, description="Search in legislation titles/names only. Cannot be used together with 'phrase' parameter. For exact phrase search, enclose in double quotes."),
-    regex_phrase: Optional[str] = Field(None, description="Search in legislation content/text only. Only regex patterns are supported: /pattern/ with ., *, +, ?, [abc], [a-z], [^0-9], {n,m}, (group), |, ^, $, \\escape, word boundaries \\b, case flag (?i)."),
+    phrase: Optional[str] = Field(None, description="Turkish search phrase. Turkish full-text search. Boolean: AND, OR, NOT. Required/prohibited: +term, -term. Phrase: \"exact phrase\", \"phrase\"~5 (proximity). Wildcard: term*, t?rm. Fuzzy: term~, term~0.8. Regex: /pattern/ with ., *, +, ?, [abc], [a-z], [^0-9], {n,m}, (group), |, ^, $, \\escape, word boundaries \\b, case flag (?i). Boost: term^2."),
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
     # AÇIKLAMA GÜNCELLENDİ
@@ -61,10 +61,10 @@ async def search_mevzuat(
 ) -> MevzuatSearchResult:
     """
     Searches for Turkish legislation on mevzuat.gov.tr.
-    Use 'regex_phrase' for full-text content search with regex patterns.
+    Use 'phrase' for full-text content search with various operators and patterns.
     """
-    if not regex_phrase and not mevzuat_no:
-        raise ToolError("You must provide at least one of the following search criteria: 'regex_phrase' or 'mevzuat_no'.")
+    if not phrase and not mevzuat_no:
+        raise ToolError("You must provide at least one of the following search criteria: 'phrase' or 'mevzuat_no'.")
 
     # Convert boolean operators to Solr syntax
     def convert_boolean_operators(phrase_text: str) -> str:
@@ -107,8 +107,8 @@ async def search_mevzuat(
         
         return text
     
-    # Process regex_phrase with boolean operators
-    processed_phrase = convert_boolean_operators(regex_phrase) if regex_phrase else regex_phrase
+    # Process phrase - only convert OR to regex, other operators work natively
+    processed_phrase = convert_boolean_operators(phrase) if phrase else phrase
 
     processed_turler = mevzuat_turleri
     if isinstance(mevzuat_turleri, str):
