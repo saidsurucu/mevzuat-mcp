@@ -87,7 +87,7 @@ class MevzuatArticleNode(BaseModel):
     """Recursive model for an article/section in the legislation's table of contents tree."""
     madde_id: str = Field(..., alias="maddeId")
     madde_no: Optional[int] = Field(None, alias="maddeNo")
-    title: str
+    title: Optional[str] = None
     description: Optional[str] = None
     children: List['MevzuatArticleNode'] = []
     mevzuat_id: str = Field(..., alias="mevzuatId")
