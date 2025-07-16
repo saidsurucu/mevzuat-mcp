@@ -36,6 +36,38 @@ from mevzuat_models import (
     MevzuatArticleNode, MevzuatArticleContent
 )
 
+def flatten_schema(schema):
+    """Flatten $ref references in a JSON schema to make it more LLM-friendly"""
+    if '$defs' not in schema:
+        return schema
+    
+    defs = schema['$defs']
+    
+    def replace_refs(obj):
+        if isinstance(obj, dict):
+            if '$ref' in obj:
+                ref_path = obj['$ref']
+                if ref_path.startswith('#/$defs/'):
+                    def_name = ref_path.split('/')[-1]
+                    if def_name in defs:
+                        result = defs[def_name].copy()
+                        for k, v in obj.items():
+                            if k != '$ref':
+                                result[k] = v
+                        return result
+                return obj
+            else:
+                return {k: replace_refs(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [replace_refs(item) for item in obj]
+        return obj
+    
+    flattened = replace_refs(schema)
+    if '$defs' in flattened:
+        del flattened['$defs']
+    
+    return flattened
+
 app = FastMCP(
     name="MevzuatGovTrMCP",
     instructions="MCP server for Adalet Bakanlığı Mevzuat Bilgi Sistemi. Allows detailed searching of Turkish legislation and retrieving the content of specific articles.",
