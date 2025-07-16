@@ -47,13 +47,13 @@ mevzuat_client = MevzuatApiClient()
 @app.tool()
 async def search_mevzuat(
     mevzuat_adi: Optional[str] = Field(None, description="Search in legislation titles/names only. Cannot be used together with 'phrase' parameter. For exact phrase search, enclose in double quotes."),
-    phrase: Optional[str] = Field(None, description="Search in legislation content/text only. Cannot be used together with 'mevzuat_adi' parameter. Turkish full-text search. Boolean: AND, OR, NOT. Required/prohibited: +term, -term. Phrase: \"exact phrase\", \"phrase\"~5 (proximity). Wildcard: term*, t?rm. Fuzzy: term~, term~0.8. Regex: /pattern/ with ., *, +, ?, [abc], [a-z], [^0-9], {n,m}, (group), |, ^, $, \\escape, word boundaries \\b, case flag (?i). Boost: term^2."),
+    regex_phrase: Optional[str] = Field(None, description="Search in legislation content/text only. Cannot be used together with 'mevzuat_adi' parameter. Only regex patterns are supported: /pattern/ with ., *, +, ?, [abc], [a-z], [^0-9], {n,m}, (group), |, ^, $, \\escape, word boundaries \\b, case flag (?i)."),
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
     # AÇIKLAMA GÜNCELLENDİ
     mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. A JSON-formatted string of this list is also acceptable."),
     page_number: int = Field(1, ge=1, description="Page number for pagination."),
-    page_size: int = Field(10, ge=1, le=50, description="Number of results to return per page."),
+    page_size: int = Field(5, ge=1, le=10, description="Number of results to return per page."),
     # AÇIKLAMA GÜNCELLENDİ
     sort_field: SortFieldEnum = Field("RESMI_GAZETE_TARIHI", description="Field to sort results by."),
     # AÇIKLAMA GÜNCELLENDİ
@@ -61,14 +61,14 @@ async def search_mevzuat(
 ) -> MevzuatSearchResult:
     """
     Searches for Turkish legislation on mevzuat.gov.tr.
-    Use 'mevzuat_adi' for title-only search and 'phrase' for full-text content search.
+    Use 'mevzuat_adi' for title-only search and 'regex_phrase' for full-text content search.
     These two parameters cannot be used together.
     """
-    if not mevzuat_adi and not phrase and not mevzuat_no:
-        raise ToolError("You must provide at least one of the following search criteria: 'mevzuat_adi', 'phrase', or 'mevzuat_no'.")
+    if not mevzuat_adi and not regex_phrase and not mevzuat_no:
+        raise ToolError("You must provide at least one of the following search criteria: 'mevzuat_adi', 'regex_phrase', or 'mevzuat_no'.")
 
-    if mevzuat_adi and phrase:
-        raise ToolError("You cannot search by title ('mevzuat_adi') and full text ('phrase') at the same time. Please provide only one of them.")
+    if mevzuat_adi and regex_phrase:
+        raise ToolError("You cannot search by title ('mevzuat_adi') and full text ('regex_phrase') at the same time. Please provide only one of them.")
 
     # Convert boolean operators to Solr syntax
     def convert_boolean_operators(phrase_text: str) -> str:
@@ -111,8 +111,8 @@ async def search_mevzuat(
         
         return text
     
-    # Process phrase with boolean operators
-    processed_phrase = convert_boolean_operators(phrase) if phrase else phrase
+    # Process regex_phrase with boolean operators
+    processed_phrase = convert_boolean_operators(regex_phrase) if regex_phrase else regex_phrase
 
     processed_turler = mevzuat_turleri
     if isinstance(mevzuat_turleri, str):

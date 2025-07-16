@@ -33,7 +33,7 @@ class MevzuatSearchRequest(BaseModel):
         description="Filter by legislation type. Defaults to all types."
     )
     page_number: int = Field(1, ge=1, description="The page number of the search results.")
-    page_size: int = Field(10, ge=1, le=50, description="Number of results per page.")
+    page_size: int = Field(5, ge=1, le=10, description="Number of results per page.")
     sort_field: SortFieldEnum = Field(
         "RESMI_GAZETE_TARIHI",
         description="Field to sort the results by."
