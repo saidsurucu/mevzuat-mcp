@@ -107,6 +107,44 @@ async def search_mevzuat(
         
         return text
     
+    # Convert query to proximity search for fallback
+    def convert_to_proximity(phrase_text: str) -> str:
+        if not phrase_text:
+            return phrase_text
+            
+        import re
+        text = phrase_text
+        
+        # Skip if already contains proximity operators
+        if '~' in text and '"' in text:
+            return text
+            
+        # Skip if it's a regex pattern
+        if text.startswith('/') and text.endswith('/'):
+            return text
+            
+        # Skip if it contains complex operators (+, -, quotes, etc.)
+        if any(op in text for op in ['+', '-', '"', '*', '?', '^']):
+            return text
+            
+        # Convert space-separated words to proximity search
+        # Split by spaces and boolean operators
+        words = re.split(r'\s+(?:AND|OR|NOT)\s+|\s+', text)
+        clean_words = [word.strip() for word in words if word.strip() and word not in ['AND', 'OR', 'NOT']]
+        
+        if len(clean_words) >= 2:
+            # For any multiple words, try adjacent pairs with proximity 5
+            # Use the pair that is most likely to match
+            pairs = []
+            for i in range(len(clean_words) - 1):
+                pairs.append(f'"{clean_words[i]} {clean_words[i+1]}"~10')
+            
+            # Try the last pair first (often more specific)
+            return pairs[-1] if pairs else text
+        else:
+            # Single word, just return as is
+            return text
+    
     # Process phrase - only convert OR to regex, other operators work natively
     processed_phrase = convert_boolean_operators(phrase) if phrase else phrase
 
@@ -137,10 +175,49 @@ async def search_mevzuat(
     logger.info(f"Tool 'search_mevzuat' called with parameters: {log_params}")
     
     try:
+        # First attempt: original query
         result = await mevzuat_client.search_documents(search_req)
+        
+        # Smart proximity fallback: if no results and we have a phrase
+        if result.total_results == 0 and processed_phrase and not result.error_message:
+            logger.info("No results found, attempting proximity fallback")
+            
+            # Try all proximity pairs until we find results
+            import re
+            words = re.split(r'\s+(?:AND|OR|NOT)\s+|\s+', processed_phrase)
+            clean_words = [word.strip() for word in words if word.strip() and word not in ['AND', 'OR', 'NOT']]
+            
+            if len(clean_words) >= 2:
+                # Generate all adjacent pairs
+                pairs = []
+                for i in range(len(clean_words) - 1):
+                    pairs.append(f'"{clean_words[i]} {clean_words[i+1]}"~10')
+                
+                # Try each pair until we find results
+                for pair_query in pairs:
+                    logger.info(f"Trying proximity pair: {pair_query}")
+                    
+                    proximity_req = MevzuatSearchRequest(
+                        phrase=pair_query,
+                        mevzuat_no=mevzuat_no,
+                        resmi_gazete_sayisi=resmi_gazete_sayisi,
+                        mevzuat_tur_list=processed_turler if processed_turler is not None else ["KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA"],
+                        page_number=page_number,
+                        page_size=page_size,
+                        sort_field=sort_field,
+                        sort_direction=sort_direction
+                    )
+                    
+                    proximity_result = await mevzuat_client.search_documents(proximity_req)
+                    if proximity_result.total_results > 0:
+                        logger.info(f"Proximity fallback successful with '{pair_query}': {proximity_result.total_results} results")
+                        return proximity_result
+        
+        # Return original result if no fallback was needed or fallback didn't help
         if not result.documents and not result.error_message:
             result.error_message = "No legislation found matching the specified criteria."
         return result
+        
     except Exception as e:
         logger.exception("Error in tool 'search_mevzuat'.")
         return MevzuatSearchResult(
