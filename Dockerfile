@@ -21,9 +21,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install the package in development mode
 RUN pip install -e .
 
-# Create logs directory
-RUN mkdir -p logs
-
 # Expose port
 EXPOSE 8000
 
