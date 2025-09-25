@@ -1,0 +1,6 @@
+{
+  "entrypoint": "mevzuat_mcp_server.py",
+  "environment": {
+    "dependencies": ["httpx", "beautifulsoup4", "lxml", "markitdown", "pypdf"]
+  }
+}

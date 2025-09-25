@@ -30,6 +30,7 @@ EXPOSE 8000
 # Set environment variables
 ENV PORT=8000
 ENV PYTHONUNBUFFERED=1
+ENV CONTAINER_ENV=1
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

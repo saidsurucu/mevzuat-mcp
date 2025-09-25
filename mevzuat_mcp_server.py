@@ -11,18 +11,28 @@ import json
 from pydantic import Field
 from typing import Optional, List, Dict, Any, Union
 
-LOG_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
-if not os.path.exists(LOG_DIRECTORY):
-    os.makedirs(LOG_DIRECTORY)
-LOG_FILE_PATH = os.path.join(LOG_DIRECTORY, "mevzuat_mcp_server.log")
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(threadName)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE_PATH, mode='a', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
+# Setup logging - use file logging locally, stdout in containers
+if os.getenv('CONTAINER_ENV'):
+    # Container environment - log only to stdout
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[logging.StreamHandler()]
+    )
+else:
+    # Local development - log to file and stdout
+    LOG_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    if not os.path.exists(LOG_DIRECTORY):
+        os.makedirs(LOG_DIRECTORY)
+    LOG_FILE_PATH = os.path.join(LOG_DIRECTORY, "mevzuat_mcp_server.log")
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(threadName)s - %(message)s',
+        handlers=[
+            logging.FileHandler(LOG_FILE_PATH, mode='a', encoding='utf-8'),
+            logging.StreamHandler()
+        ]
+    )
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
@@ -38,8 +48,7 @@ from mevzuat_models import (
 
 app = FastMCP(
     name="MevzuatGovTrMCP",
-    instructions="MCP server for Adalet Bakanlığı Mevzuat Bilgi Sistemi. Allows detailed searching of Turkish legislation and retrieving the content of specific articles.",
-    dependencies=["httpx", "beautifulsoup4", "lxml", "markitdown", "pypdf"]
+    instructions="MCP server for Adalet Bakanlığı Mevzuat Bilgi Sistemi. Allows detailed searching of Turkish legislation and retrieving the content of specific articles."
 )
 
 mevzuat_client = MevzuatApiClient()
