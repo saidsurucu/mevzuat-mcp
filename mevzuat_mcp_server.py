@@ -34,7 +34,8 @@ app = FastMCP(
     instructions="MCP server for Adalet Bakanlığı Mevzuat Bilgi Sistemi. Allows detailed searching of Turkish legislation and retrieving the content of specific articles."
 )
 
-mevzuat_client = MevzuatApiClient()
+# Initialize client with caching enabled (1 hour TTL by default)
+mevzuat_client = MevzuatApiClient(cache_ttl=3600, enable_cache=True)
 
 @app.tool()
 async def search_mevzuat(
@@ -43,7 +44,7 @@ async def search_mevzuat(
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
     # AÇIKLAMA GÜNCELLENDİ
-    mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. A JSON-formatted string of this list is also acceptable."),
+    mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. Must be a JSON-formatted string when passed as string. Examples: For single type: '[\"KANUN\"]', For multiple types: '[\"KANUN\", \"YONETMELIK\"]'. Available types: KANUN, CB_KARARNAME, YONETMELIK, CB_YONETMELIK, CB_KARAR, CB_GENELGE, KHK, TUZUK, KKY, UY, TEBLIGLER, MULGA. Note: Never use just 'KANUN' - always use '[\"KANUN\"]'"),
     page_number: int = Field(1, ge=1, description="Page number for pagination."),
     page_size: int = Field(5, ge=1, le=10, description="Number of results to return per page."),
     # AÇIKLAMA GÜNCELLENDİ
@@ -233,6 +234,8 @@ async def get_mevzuat_content(mevzuat_id: str = Field(..., description="The ID o
             madde_id=mevzuat_id, mevzuat_id=mevzuat_id,
             markdown_content="", error_message=f"An unexpected error occurred: {str(e)}"
         )
+
+
 
 
 def main():
