@@ -163,3 +163,6 @@ test_mevzuat_server.py
 
 # Test files
 test_*.py
+
+# Claude development notes
+CLAUDE.md

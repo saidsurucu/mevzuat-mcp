@@ -1,6 +1,6 @@
 # Mevzuat MCP: Adalet Bakanlığı Mevzuat Bilgi Sistemi için MCP Sunucusu
 
-Bu proje, Adalet Bakanlığı'na ait Mevzuat Bilgi Sistemi'ne (`mevzuat.gov.tr`) erişimi kolaylaştıran bir [FastMCP](https://gofastmcp.com/) sunucusu oluşturur. Bu sayede, Mevzuat Bilgi Sistemi'nden mevzuat arama, madde listelerini getirme ve madde içeriklerini Markdown formatında alma işlemleri, Model Context Protocol (MCP) destekleyen LLM (Büyük Dil Modeli) uygulamaları (örneğin Claude Desktop veya [5ire](https://5ire.app)) ve diğer istemciler tarafından araç (tool) olarak kullanılabilir hale gelir.
+Bu proje, Adalet Bakanlığı'na ait Mevzuat Bilgi Sistemi'ne (`mevzuat.gov.tr`) erişimi kolaylaştıran bir [FastMCP](https://gofastmcp.com/) sunucusu oluşturur. Bu sayede, Mevzuat Bilgi Sistemi'nden mevzuat arama ve tüm mevzuat içeriklerini Markdown formatında alma işlemleri, Model Context Protocol (MCP) destekleyen LLM (Büyük Dil Modeli) uygulamaları (örneğin Claude Desktop veya [5ire](https://5ire.app)) ve diğer istemciler tarafından araç (tool) olarak kullanılabilir hale gelir.
 
 ![örnek](./ornek.png)
 
@@ -8,9 +8,8 @@ Bu proje, Adalet Bakanlığı'na ait Mevzuat Bilgi Sistemi'ne (`mevzuat.gov.tr`)
 
 * Adalet Bakanlığı Mevzuat Bilgi Sistemi'ne programatik erişim için standart bir MCP arayüzü.
 * Aşağıdaki yetenekler:
-    * **Detaylı Mevzuat Arama:** Mevzuat adı/içeriği, mevzuat numarası, Resmi Gazete sayısı, mevzuat türü ve sıralama kriterleri gibi çeşitli filtrelere göre mevzuat arama.
-    * **Madde Ağacı Listeleme:** Belirli bir mevzuatın içindekiler tablosunu (bölüm, madde başlıkları vb.) hiyerarşik bir yapıda getirme.
-    * **Madde İçeriği Getirme:** Belirli bir maddenin tam metin içeriğini, işlenmiş ve temizlenmiş Markdown formatında getirme.
+    * **Detaylı Mevzuat Arama:** Tam metin arama, mevzuat numarası, Resmi Gazete sayısı, mevzuat türü ve sıralama kriterleri gibi çeşitli filtrelere göre mevzuat arama.
+    * **Mevzuat İçeriği Getirme:** Belirli bir mevzuatın tüm içeriğini (tüm maddeler, bölümler ve kısımlar dahil), işlenmiş ve temizlenmiş Markdown formatında getirme.
 * Mevzuat metinlerinin LLM'ler tarafından daha kolay işlenebilmesi için HTML'den Markdown formatına çevrilmesi.
 * Claude Desktop uygulaması ile kolay entegrasyon.
 * Mevzuat MCP, [5ire](https://5ire.app) gibi Claude Desktop haricindeki MCP istemcilerini de destekler.
@@ -68,16 +67,12 @@ Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP iste
 Bu FastMCP sunucusu LLM modelleri için aşağıdaki araçları sunar:
 
 * **`search_mevzuat`**: Mevzuat Bilgi Sistemi'nde çeşitli detaylı kriterleri kullanarak arama yapar.
-    * **Parametreler**: `mevzuat_adi`, `mevzuat_no`, `resmi_gazete_sayisi`, `search_in_title`, `mevzuat_turleri`, `page_number`, `page_size`, `sort_field`, `sort_direction`.
+    * **Parametreler**: `phrase` (tam metin arama), `mevzuat_no`, `resmi_gazete_sayisi`, `mevzuat_turleri`, `page_number`, `page_size`, `sort_field`, `sort_direction`.
     * **Döndürdüğü Değer**: `MevzuatSearchResult` (sayfalanmış mevzuat listesi, toplam sonuç sayısı vb. içerir)
 
-* **`get_mevzuat_article_tree`**: Belirli bir mevzuatın madde ve bölümlerini hiyerarşik bir ağaç yapısında listeler.
+* **`get_mevzuat_content`**: Belirli bir mevzuatın tüm içeriğini temizlenmiş Markdown formatında getirir.
     * **Parametreler**: `mevzuat_id` (arama sonucundan elde edilen mevzuat ID'si).
-    * **Döndürdüğü Değer**: `List[MevzuatArticleNode]` (iç içe geçmiş madde ve başlıkların listesi)
-
-* **`get_mevzuat_article_content`**: Belirli bir mevzuat maddesinin tam metnini temizlenmiş Markdown formatında getirir.
-    * **Parametreler**: `mevzuat_id`, `madde_id` (madde ağacından elde edilen madde ID'si).
-    * **Döndürdüğü Değer**: `MevzuatArticleContent` (maddenin Markdown içeriği, metadata vb. içerir)
+    * **Döndürdüğü Değer**: `MevzuatArticleContent` (mevzuatın tüm içeriği Markdown formatında)
 
 📜 **Lisans**
 
