@@ -29,6 +29,48 @@ from mevzuat_models import (
     MevzuatArticleContent
 )
 
+def parse_mevzuat_turleri(value: Optional[Union[List[MevzuatTurEnum], str]]) -> List[str]:
+    """Parse mevzuat_turleri parameter with flexible input formats.
+
+    Accepts:
+    - Single string: "KANUN" -> ["KANUN"]
+    - Comma-separated: "KANUN,YONETMELIK" -> ["KANUN", "YONETMELIK"]
+    - JSON array string: '["KANUN", "YONETMELIK"]' -> ["KANUN", "YONETMELIK"]
+    - Direct list: ["KANUN"] -> ["KANUN"]
+    """
+    if value is None:
+        return ["KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA"]
+
+    # If it's already a list, convert to strings and return
+    if isinstance(value, list):
+        return [str(item) if hasattr(item, 'value') else str(item) for item in value]
+
+    # If it's a string, try different parsing strategies
+    if isinstance(value, str):
+        value = value.strip()
+
+        # Try JSON parsing first
+        if value.startswith('[') and value.endswith(']'):
+            try:
+                import json
+                parsed_list = json.loads(value)
+                if isinstance(parsed_list, list):
+                    return [str(item) for item in parsed_list]
+            except json.JSONDecodeError:
+                pass
+
+        # Check if it contains commas (multiple values)
+        if ',' in value:
+            # Split by comma and clean up
+            items = [item.strip().upper() for item in value.split(',') if item.strip()]
+            return items
+        else:
+            # Single value
+            return [value.strip().upper()]
+
+    # Fallback to default
+    return ["KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA"]
+
 app = FastMCP(
     name="MevzuatGovTrMCP",
     instructions="MCP server for Adalet Bakanlığı Mevzuat Bilgi Sistemi. Allows detailed searching of Turkish legislation and retrieving the content of specific articles."
@@ -44,7 +86,7 @@ async def search_mevzuat(
     mevzuat_no: Optional[str] = Field(None, description="The specific number of the legislation, e.g., '5237' for the Turkish Penal Code."),
     resmi_gazete_sayisi: Optional[str] = Field(None, description="The issue number of the Official Gazette where the legislation was published."),
     # AÇIKLAMA GÜNCELLENDİ
-    mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. Must be a JSON-formatted string when passed as string. Examples: For single type: '[\"KANUN\"]', For multiple types: '[\"KANUN\", \"YONETMELIK\"]'. Available types: KANUN, CB_KARARNAME, YONETMELIK, CB_YONETMELIK, CB_KARAR, CB_GENELGE, KHK, TUZUK, KKY, UY, TEBLIGLER, MULGA. Note: Never use just 'KANUN' - always use '[\"KANUN\"]'"),
+    mevzuat_turleri: Optional[Union[List[MevzuatTurEnum], str]] = Field(None, description="Filter by legislation types. Accepts multiple formats: Single type: 'KANUN', Multiple types: 'KANUN,YONETMELIK' or '[\"KANUN\", \"YONETMELIK\"]'. Available types: KANUN, CB_KARARNAME, YONETMELIK, CB_YONETMELIK, CB_KARAR, CB_GENELGE, KHK, TUZUK, KKY, UY, TEBLIGLER, MULGA. Examples: 'KANUN', 'KANUN,CB_KARARNAME', '[\"YONETMELIK\"]'"),
     page_number: int = Field(1, ge=1, description="Page number for pagination."),
     page_size: int = Field(5, ge=1, le=10, description="Number of results to return per page."),
     # AÇIKLAMA GÜNCELLENDİ
@@ -141,23 +183,18 @@ async def search_mevzuat(
     # Process phrase - only convert OR to regex, other operators work natively
     processed_phrase = convert_boolean_operators(phrase) if phrase else phrase
 
-    processed_turler = mevzuat_turleri
-    if isinstance(mevzuat_turleri, str):
-        try:
-            parsed_list = json.loads(mevzuat_turleri)
-            if isinstance(parsed_list, list):
-                processed_turler = parsed_list
-            else:
-                raise ToolError(f"mevzuat_turleri was provided as a string, but it's not a JSON list. Value: {mevzuat_turleri}")
-        except json.JSONDecodeError:
-            raise ToolError(f"mevzuat_turleri was provided as a string, but it is not valid JSON. Value: {mevzuat_turleri}")
+    # Use the flexible parser
+    try:
+        processed_turler = parse_mevzuat_turleri(mevzuat_turleri)
+    except Exception as e:
+        raise ToolError(f"Invalid mevzuat_turleri format: {mevzuat_turleri}. Error: {str(e)}")
 
     search_req = MevzuatSearchRequest(
         # mevzuat_adi=mevzuat_adi,
         phrase=processed_phrase,
         mevzuat_no=mevzuat_no,
         resmi_gazete_sayisi=resmi_gazete_sayisi,
-        mevzuat_tur_list=processed_turler if processed_turler is not None else ["KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA"],
+        mevzuat_tur_list=processed_turler,
         page_number=page_number,
         page_size=page_size,
         sort_field=sort_field,
@@ -194,7 +231,7 @@ async def search_mevzuat(
                         phrase=pair_query,
                         mevzuat_no=mevzuat_no,
                         resmi_gazete_sayisi=resmi_gazete_sayisi,
-                        mevzuat_tur_list=processed_turler if processed_turler is not None else ["KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR", "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA"],
+                        mevzuat_tur_list=processed_turler,
                         page_number=page_number,
                         page_size=page_size,
                         sort_field=sort_field,
