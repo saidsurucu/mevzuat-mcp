@@ -1,6 +1,19 @@
 {
-  "entrypoint": "mevzuat_mcp_server.py",
+  "$schema": "https://gofastmcp.com/public/schemas/fastmcp.json/v1.json",
+  "source": {
+    "path": "mevzuat_mcp_server_new.py",
+    "entrypoint": "app"
+  },
   "environment": {
-    "dependencies": ["httpx", "beautifulsoup4", "lxml", "markitdown", "pypdf"]
+    "dependencies": [
+      "httpx",
+      "beautifulsoup4",
+      "lxml",
+      "markitdown[pdf]",
+      "playwright==1.55.0",
+      "mistralai",
+      "python-dotenv",
+      "pydantic"
+    ]
   }
 }
