@@ -1,7 +1,7 @@
 {
   "$schema": "https://gofastmcp.com/public/schemas/fastmcp.json/v1.json",
   "source": {
-    "path": "mevzuat_mcp_server_new.py",
+    "path": "mevzuat_mcp_server.py",
     "entrypoint": "app"
   },
   "environment": {

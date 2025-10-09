@@ -14,7 +14,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from markitdown import MarkItDown
 from typing import Dict, List, Optional, Any, NamedTuple
-from mevzuat_models_new import (
+from mevzuat_models import (
     MevzuatSearchRequestNew, MevzuatSearchResultNew, MevzuatDocumentNew,
     MevzuatArticleContent
 )

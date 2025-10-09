@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
-from mevzuat_client_new import MevzuatApiClientNew
-from mevzuat_models_new import (
+from mevzuat_client import MevzuatApiClientNew
+from mevzuat_models import (
     MevzuatSearchRequestNew,
     MevzuatSearchResultNew,
     MevzuatTurLiteral,
