@@ -85,9 +85,9 @@ Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP iste
 CB Kararı ve CB Genelgesi gibi PDF tabanlı mevzuatlar için Mistral OCR kullanılır. OCR özelliğini aktif etmek için:
 
 1. [Mistral AI Console](https://console.mistral.ai/) üzerinden API anahtarı alın
-2. Projenin bulunduğu klasörde `.env` dosyası oluşturun:
+2. **uvx ile çalıştırırken** environment variable olarak verin:
    ```bash
-   MISTRAL_API_KEY=your_api_key_here
+   MISTRAL_API_KEY=your_api_key_here uvx --from git+https://github.com/saidsurucu/mevzuat-mcp mevzuat-mcp
    ```
 3. API anahtarı olmadan da sistem çalışır, ancak PDF'ler markitdown ile işlenir (daha düşük kalite)
 
