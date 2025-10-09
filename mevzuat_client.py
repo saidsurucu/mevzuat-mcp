@@ -246,6 +246,21 @@ class MevzuatApiClientNew:
             logger.error(f"Mistral OCR failed: {e}")
             return None
 
+    def _ensure_playwright_browsers(self) -> None:
+        """Ensure Playwright browsers are installed."""
+        try:
+            import subprocess
+            import sys
+            logger.info("Checking Playwright browser installation...")
+            subprocess.check_call(
+                [sys.executable, "-m", "playwright", "install", "chromium"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            logger.info("Playwright browsers ready")
+        except Exception as e:
+            logger.warning(f"Could not ensure Playwright browsers: {e}")
+
     async def _ensure_session(self) -> None:
         """Ensure we have a valid session with antiforgery token and cookies using Playwright."""
         if self._antiforgery_token and self._cookies:
@@ -253,6 +268,9 @@ class MevzuatApiClientNew:
 
         try:
             from playwright.async_api import async_playwright
+
+            # Ensure browsers are installed
+            self._ensure_playwright_browsers()
 
             logger.info("Getting session with Playwright")
 
@@ -299,6 +317,9 @@ class MevzuatApiClientNew:
         from playwright.async_api import async_playwright
 
         try:
+            # Ensure browsers are installed
+            self._ensure_playwright_browsers()
+
             logger.info(f"Searching with Playwright fetch: {request.aranacak_ifade or request.mevzuat_no}")
 
             async with async_playwright() as p:
