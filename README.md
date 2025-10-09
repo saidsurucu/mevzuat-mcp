@@ -7,12 +7,27 @@ Bu proje, Adalet Bakanlığı'na ait Mevzuat Bilgi Sistemi'ne (`mevzuat.gov.tr`)
 🎯 **Temel Özellikler**
 
 * Adalet Bakanlığı Mevzuat Bilgi Sistemi'ne programatik erişim için standart bir MCP arayüzü.
-* Aşağıdaki yetenekler:
-    * **Detaylı Mevzuat Arama:** Tam metin arama, mevzuat numarası, Resmi Gazete sayısı, mevzuat türü ve sıralama kriterleri gibi çeşitli filtrelere göre mevzuat arama.
-    * **Mevzuat İçeriği Getirme:** Belirli bir mevzuatın tüm içeriğini (tüm maddeler, bölümler ve kısımlar dahil), işlenmiş ve temizlenmiş Markdown formatında getirme.
-* Mevzuat metinlerinin LLM'ler tarafından daha kolay işlenebilmesi için HTML'den Markdown formatına çevrilmesi.
-* Claude Desktop uygulaması ile kolay entegrasyon.
-* Mevzuat MCP, [5ire](https://5ire.app) gibi Claude Desktop haricindeki MCP istemcilerini de destekler.
+* 18 farklı tool ile kapsamlı mevzuat erişimi:
+    * **Kanun (Laws)** - Türkiye Cumhuriyeti kanunları
+    * **KHK (Decree Laws)** - Kanun Hükmünde Kararnameler
+    * **Tüzük (Statutes)** - Tüzükler
+    * **Kurum Yönetmeliği (Institutional Regulations)** - Kurum ve kuruluş yönetmelikleri
+    * **Cumhurbaşkanlığı Kararnamesi (Presidential Decrees)** - Cumhurbaşkanlığı kararnameleri
+    * **Cumhurbaşkanı Kararı (Presidential Decisions)** - Cumhurbaşkanı kararları
+    * **CB Yönetmeliği (Presidential Regulations)** - Cumhurbaşkanlığı ve Bakanlar Kurulu yönetmelikleri
+    * **CB Genelgesi (Presidential Circulars)** - Cumhurbaşkanlığı genelgeleri
+    * **Tebliğ (Communiqués)** - Tebliğler
+* Her mevzuat türü için çift tool yapısı:
+    * **Arama tool'u**: Başlıkta arama, Boolean operatörler (AND, OR, NOT), tarih filtreleme
+    * **İçinde arama tool'u**: Madde bazında arama, alakalılık skoru ile sıralama
+* Gelişmiş özellikler:
+    * PDF'leri Mistral OCR ile metin çıkarma (CB Kararı ve CB Genelgesi için)
+    * HTML'den Markdown'a otomatik dönüştürme
+    * In-memory caching (1 saat TTL) ile hızlı erişim
+    * Boolean arama operatörleri (AND, OR, NOT)
+    * Tam cümle araması (exact phrase)
+    * Tarih aralığı filtreleme
+* Claude Desktop ve 5ire gibi MCP istemcileri ile kolay entegrasyon
 
 ---
 🚀 **Claude Haricindeki Modellerle Kullanmak İçin Çok Kolay Kurulum (Örnek: 5ire için)**
@@ -62,18 +77,78 @@ Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP iste
     ```
 4.  Claude Desktop'ı kapatıp yeniden başlatın.
 
+---
+🔑 **Mistral OCR için API Anahtarı (Opsiyonel)**
+
+CB Kararı ve CB Genelgesi gibi PDF tabanlı mevzuatlar için Mistral OCR kullanılır. OCR özelliğini aktif etmek için:
+
+1. [Mistral AI Console](https://console.mistral.ai/) üzerinden API anahtarı alın
+2. Projenin bulunduğu klasörde `.env` dosyası oluşturun:
+   ```bash
+   MISTRAL_API_KEY=your_api_key_here
+   ```
+3. API anahtarı olmadan da sistem çalışır, ancak PDF'ler markitdown ile işlenir (daha düşük kalite)
+
+---
 🛠️ **Kullanılabilir Araçlar (MCP Tools)**
 
-Bu FastMCP sunucusu LLM modelleri için aşağıdaki araçları sunar:
+Bu FastMCP sunucusu LLM modelleri için **18 araç** sunar. Her mevzuat türü için 2 araç bulunur:
 
-* **`search_mevzuat`**: Mevzuat Bilgi Sistemi'nde çeşitli detaylı kriterleri kullanarak arama yapar.
-    * **Parametreler**: `phrase` (tam metin arama), `mevzuat_no`, `resmi_gazete_sayisi`, `mevzuat_turleri`, `page_number`, `page_size`, `sort_field`, `sort_direction`.
-    * **Döndürdüğü Değer**: `MevzuatSearchResult` (sayfalanmış mevzuat listesi, toplam sonuç sayısı vb. içerir)
+### Kanun (Laws)
+* **`search_kanun`**: Kanun başlıklarında arama yapar
+* **`search_within_kanun`**: Kanun maddelerinde anahtar kelime araması yapar
 
-* **`get_mevzuat_content`**: Belirli bir mevzuatın tüm içeriğini temizlenmiş Markdown formatında getirir.
-    * **Parametreler**: `mevzuat_id` (arama sonucundan elde edilen mevzuat ID'si).
-    * **Döndürdüğü Değer**: `MevzuatArticleContent` (mevzuatın tüm içeriği Markdown formatında)
+### KHK (Decree Laws)
+* **`search_khk`**: KHK başlıklarında arama yapar
+* **`search_within_khk`**: KHK maddelerinde anahtar kelime araması yapar
 
+### Tüzük (Statutes)
+* **`search_tuzuk`**: Tüzük başlıklarında arama yapar
+* **`search_within_tuzuk`**: Tüzük maddelerinde anahtar kelime araması yapar
+
+### Kurum Yönetmeliği (Institutional Regulations)
+* **`search_kurum_yonetmelik`**: Kurum yönetmeliği başlıklarında arama yapar
+* **`search_within_kurum_yonetmelik`**: Kurum yönetmeliği maddelerinde anahtar kelime araması yapar
+
+### Cumhurbaşkanlığı Kararnamesi (Presidential Decrees)
+* **`search_cbk`**: CB Kararnamesi başlıklarında arama yapar
+* **`search_within_cbk`**: CB Kararnamesi maddelerinde anahtar kelime araması yapar
+
+### Cumhurbaşkanı Kararı (Presidential Decisions)
+* **`search_cbbaskankarar`**: CB Kararı başlıklarında arama yapar (PDF - OCR destekli)
+* **`search_within_cbbaskankarar`**: CB Kararı içeriğinde anahtar kelime araması yapar
+
+### CB Yönetmeliği (Presidential Regulations)
+* **`search_cbyonetmelik`**: CB Yönetmeliği başlıklarında arama yapar
+* **`search_within_cbyonetmelik`**: CB Yönetmeliği maddelerinde anahtar kelime araması yapar
+
+### CB Genelgesi (Presidential Circulars)
+* **`search_cbgenelge`**: CB Genelgesi başlıklarında arama yapar (PDF - OCR destekli)
+* **`search_within_cbgenelge`**: CB Genelgesi içeriğinde anahtar kelime araması yapar
+
+### Tebliğ (Communiqués)
+* **`search_teblig`**: Tebliğ başlıklarında arama yapar
+* **`search_within_teblig`**: Tebliğ maddelerinde anahtar kelime araması yapar
+
+### Ortak Parametreler
+
+**Arama Tool'ları için:**
+* `aranacak_ifade`: Aranacak kelime veya kelime grupları (AND, OR, NOT operatörleri desteklenir)
+* `tam_cumle`: Tam cümle eşleşmesi (exact phrase)
+* `baslangic_tarihi` / `bitis_tarihi`: Tarih aralığı filtreleme (YYYY-MM-DD formatında)
+* `page_number`, `page_size`: Sayfalama
+
+**İçinde Arama Tool'ları için:**
+* `mevzuat_no`: Mevzuat numarası (arama sonucundan alınır)
+* `keyword`: Aranacak anahtar kelime
+* `case_sensitive`: Büyük/küçük harf duyarlılığı
+* `max_results`: Maksimum sonuç sayısı
+
+### Döndürülen Değerler
+* **Arama tool'ları**: `MevzuatSearchResultNew` (mevzuat listesi, toplam sayı, sayfalama bilgisi)
+* **İçinde arama tool'ları**: Alakalılık skoruna göre sıralanmış madde listesi (JSON formatında)
+
+---
 📜 **Lisans**
 
 Bu proje MIT Lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakınız.
