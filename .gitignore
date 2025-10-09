@@ -166,3 +166,6 @@ test_*.py
 
 # Claude development notes
 CLAUDE.md
+
+# Data directory (cache, embeddings, etc.)
+data/
