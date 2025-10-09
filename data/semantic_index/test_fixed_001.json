@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "chunk_max_chars": 4000,
+  "chunk_overlap_chars": 400,
+  "chunks": [
+    {
+      "index": 0,
+      "text": "**MADDE 1** - Test madde 1 içeriği. Bu madde uzun bir açıklama içerir ve chunk test etmek için kullanılır.\n    \n**MADDE 2** - Test madde 2 içeriği. Bu da başka bir madde ve farklı içerik barındırır.\n\n**MADDE 3** - Test madde 3 içeriği. Son test maddesi ve kapanış.",
+      "char_count": 264,
+      "preview": "**MADDE 1** - Test madde 1 içeriği. Bu madde uzun bir açıklama içerir ve chunk test etmek için kullanılır."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "chunk_max_chars": 4000,
+  "chunk_overlap_chars": 400,
+  "chunks": [
+    {
+      "index": 0,
+      "text": "# Türk Ticaret Kanunu Test\n    \n## Kayıtlı Sermaye Sistemi\nAnonim şirketlerde kayıtlı sermaye tavanı, şirketin esas sözleşmesinde belirlenir.\n\n## Genel Kurul Kararları  \nSermaye artırımı için genel kurul kararı gereklidir. Bu karar özel çoğunlukla alınır.\n\n## Halka Açık Şirketler\nHalka açık şirketlerde sermaye piyasası mevzuatı da uygulanır.",
+      "char_count": 343,
+      "preview": "# Türk Ticaret Kanunu Test"
+    }
+  ]
+}

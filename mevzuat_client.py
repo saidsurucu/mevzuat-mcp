@@ -9,11 +9,10 @@ import logging
 import io
 import time
 import os
-import base64
 from pathlib import Path
 from bs4 import BeautifulSoup
 from markitdown import MarkItDown
-from typing import Dict, List, Optional, Any, NamedTuple
+from typing import Dict, Optional, Any, NamedTuple
 from mevzuat_models import (
     MevzuatSearchRequestNew, MevzuatSearchResultNew, MevzuatDocumentNew,
     MevzuatArticleContent
@@ -176,7 +175,7 @@ class MevzuatApiClientNew:
         if self._cache_enabled and cache_key and self._cache:
             cached_result = self._cache.get(cache_key)
             if cached_result is not None:
-                logger.debug(f"Cache hit for HTML conversion")
+                logger.debug("Cache hit for HTML conversion")
                 return cached_result
 
         try:
@@ -557,9 +556,9 @@ class MevzuatApiClientNew:
             logger.info(f"HTML scraping returned no content for {mevzuat_no}, trying file downloads")
         else:
             if mevzuat_tur == 20:
-                logger.info(f"CB Kararı detected (tur=20), skipping HTML scraping, going directly to PDF")
+                logger.info("CB Kararı detected (tur=20), skipping HTML scraping, going directly to PDF")
             elif mevzuat_tur == 22:
-                logger.info(f"CB Genelgesi detected (tur=22), skipping HTML scraping, going directly to PDF")
+                logger.info("CB Genelgesi detected (tur=22), skipping HTML scraping, going directly to PDF")
 
         cache_key = f"doc:{mevzuat_tur}.{mevzuat_tertip}.{mevzuat_no}" if self._cache_enabled else None
 
@@ -666,7 +665,7 @@ class MevzuatApiClientNew:
 
                 # Fallback to markitdown if OCR fails
                 if not markdown_content:
-                    logger.warning(f"Mistral OCR failed, falling back to markitdown")
+                    logger.warning("Mistral OCR failed, falling back to markitdown")
                     pdf_stream = io.BytesIO(pdf_bytes)
                     result = self._md_converter.convert_stream(pdf_stream, file_extension=".pdf")
                     markdown_content = result.text_content.strip() if result and result.text_content else ""

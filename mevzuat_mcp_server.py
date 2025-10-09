@@ -17,13 +17,11 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
 
 from mevzuat_client import MevzuatApiClientNew
 from mevzuat_models import (
     MevzuatSearchRequestNew,
     MevzuatSearchResultNew,
-    MevzuatTurLiteral,
     MevzuatArticleContent
 )
 from article_search import search_articles_by_keyword, ArticleSearchResult, format_search_results
@@ -617,7 +615,7 @@ async def search_cbyonetmelik(
         return result
 
     except Exception as e:
-        logger.exception(f"Error in tool 'search_cbyonetmelik'")
+        logger.exception("Error in tool 'search_cbyonetmelik'")
         return MevzuatSearchResultNew(
             documents=[],
             total_results=0,
@@ -941,7 +939,7 @@ async def search_cbgenelge(
         return result
 
     except Exception as e:
-        logger.exception(f"Error in tool 'search_cbgenelge'")
+        logger.exception("Error in tool 'search_cbgenelge'")
         return MevzuatSearchResultNew(
             documents=[],
             total_results=0,
@@ -1568,7 +1566,7 @@ def main():
         app.run()
     except KeyboardInterrupt:
         logger.info(f"{app.name} server shut down by user.")
-    except Exception as e:
+    except Exception:
         logger.exception(f"{app.name} server crashed.")
 
 

@@ -1,0 +1,85 @@
+{
+  "schema_version": 2,
+  "chunk_max_chars": 1000,
+  "chunk_overlap_chars": 200,
+  "chunks": [
+    {
+      "index": 0,
+      "text": "# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 997,
+      "preview": "# Örnek Kanun Başlığı"
+    },
+    {
+      "index": 1,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 2,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 3,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 4,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 5,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 6,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 7,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 8,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 9,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 10,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 11,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...",
+      "char_count": 956,
+      "preview": "un amacı..."
+    },
+    {
+      "index": 12,
+      "text": "un amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.\n\n# Örnek Kanun Başlığı\n\nMadde 1 - Bu kanunun amacı...\n\nMadde 2 - İlgili maddelerde belirtilen hususlar...\n\nMadde 3 - Diğer hükümler burada yer alır.\n\nMadde 4 - Yürürlük ve yürütme maddesi.",
+      "char_count": 335,
+      "preview": "un amacı..."
+    }
+  ]
+}
