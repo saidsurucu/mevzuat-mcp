@@ -47,7 +47,7 @@ Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP iste
     * **Name:** `Mevzuat MCP`
     * **Command:**
         ```
-        uvx mevzuat-mcp
+        uvx --from git+https://github.com/saidsurucu/mevzuat-mcp mevzuat-mcp
         ```
     * **Save** butonuna basarak kaydedin.
 ![5ire ayarları](./5ire-settings.png)
@@ -69,6 +69,8 @@ Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP iste
         "Mevzuat MCP": {
           "command": "uvx",
           "args": [
+            "--from",
+            "git+https://github.com/saidsurucu/mevzuat-mcp",
             "mevzuat-mcp"
           ]
         }
