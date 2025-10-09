@@ -7,15 +7,6 @@ import logging
 from pydantic import Field
 from typing import Optional
 
-# Simple logging setup
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logger = logging.getLogger(__name__)
-
 from fastmcp import FastMCP
 
 from mevzuat_client import MevzuatApiClientNew
@@ -25,6 +16,15 @@ from mevzuat_models import (
     MevzuatArticleContent
 )
 from article_search import search_articles_by_keyword, ArticleSearchResult, format_search_results
+
+# Simple logging setup
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
 
 app = FastMCP(
     name="MevzuatGovTrMCP",
