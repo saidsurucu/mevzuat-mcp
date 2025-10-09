@@ -432,6 +432,11 @@ class MevzuatApiClientNew:
         # Get session/cookies with Playwright first
         await self._ensure_session()
 
+        # If session establishment failed, fallback to full Playwright method
+        if not self._antiforgery_token and not self._cookies:
+            logger.warning("Session establishment failed, using full Playwright search method as fallback")
+            return await self.search_documents_with_playwright(request)
+
         # Build DataTables compatible payload
         # Normalize mevzuat type for API
         mevzuat_tur_api = self._normalize_mevzuat_tur_for_api(request.mevzuat_tur)
