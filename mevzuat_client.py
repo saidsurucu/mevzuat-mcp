@@ -620,11 +620,14 @@ class MevzuatApiClientNew:
                 )
             pdf_url = self.GENELGE_PDF_URL_TEMPLATE.format(date=date_str, no=mevzuat_no)
             doc_url = None  # Genelge has no DOC version
+        elif mevzuat_tur == 20:  # CB Kararı - PDF only, no DOC
+            doc_url = None  # CB Kararları have no DOC version
+            pdf_url = self.PDF_URL_TEMPLATE.format(tur=mevzuat_tur, tertip=mevzuat_tertip, no=mevzuat_no)
         else:
             doc_url = self.DOC_URL_TEMPLATE.format(tur=mevzuat_tur, tertip=mevzuat_tertip, no=mevzuat_no)
             pdf_url = self.PDF_URL_TEMPLATE.format(tur=mevzuat_tur, tertip=mevzuat_tertip, no=mevzuat_no)
 
-        # Try DOC first (skip for Genelge which has no DOC version)
+        # Try DOC first (skip for CB Genelgesi and CB Kararı which have no DOC version)
         if doc_url:
             try:
                 logger.info(f"Trying DOC: {doc_url}")
