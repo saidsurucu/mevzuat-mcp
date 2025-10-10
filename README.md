@@ -30,6 +30,22 @@ Bu proje, Adalet Bakanlığı'na ait Mevzuat Bilgi Sistemi'ne (`mevzuat.gov.tr`)
 * Claude Desktop ve 5ire gibi MCP istemcileri ile kolay entegrasyon
 
 ---
+🌐 **En Kolay Yol: Ücretsiz Remote MCP (Claude Desktop için)**
+
+Hiçbir kurulum gerektirmeyen, doğrudan kullanıma hazır MCP sunucusu:
+
+1. Claude Desktop'ı açın
+2. **Settings > Connectors > Add custom connector**
+3. Açılan pencerede:
+   * **Name:** `Mevzuat MCP`
+   * **URL:** `https://mevzuat.surucu.dev/mcp`
+4. **Save** butonuna basın
+
+Hepsi bu kadar! Artık Mevzuat MCP ile konuşabilirsiniz.
+
+> **Not:** Bu ücretsiz sunucu topluluk için sağlanmaktadır. Yoğun kullanım için kendi sunucunuzu kurmanız önerilir.
+
+---
 🚀 **Claude Haricindeki Modellerle Kullanmak İçin Çok Kolay Kurulum (Örnek: 5ire için)**
 
 Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP istemcileriyle kullanmak isteyenler içindir.
