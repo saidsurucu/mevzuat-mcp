@@ -33,11 +33,12 @@ def split_into_articles(markdown_content: str) -> List[Dict[str, str]]:
     """
     articles = []
 
-    # Split by article headers: **MADDE X –** or **MADDE X**-
-    # Regex to match both formats:
+    # Split by article headers: **MADDE X –** or **MADDE X**- or **Madde X –**
+    # Regex to match all formats (case-insensitive for MADDE/Madde):
     # - **MADDE 1 –** (dash inside **) - used in some laws
     # - **MADDE 1**- (dash outside **) - used in regulations
-    pattern = r'\*\*MADDE\s+(\d+)(?:\s*[–-])?\*\*\s*-?'
+    # - **Madde 1 –** (title case) - used in some laws like CMK
+    pattern = r'\*\*(?:MADDE|Madde)\s+(\d+)(?:\s*[–-])?\*\*\s*-?'
 
     # Find all article positions
     matches = list(re.finditer(pattern, markdown_content))
