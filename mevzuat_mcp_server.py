@@ -28,7 +28,15 @@ logger = logging.getLogger(__name__)
 
 app = FastMCP(
     name="MevzuatGovTrMCP",
-    instructions="MCP server for mevzuat.gov.tr. Allows searching Turkish legislation (Kanun/laws, Tebliğ/communiqués, CB Kararnamesi/Presidential Decrees, CB Kararı/Presidential Decisions, CB Yönetmeliği/Presidential Regulations, CB Genelgesi/Presidential Circulars) and retrieving full content."
+    instructions="MCP server for mevzuat.gov.tr - Turkish legislation search and content retrieval. "
+    "Supports 9 legislation types (18 tools): "
+    "Kanun (laws), KHK (decree laws), Tüzük (statutes), Kurum Yönetmeliği (institutional regulations), "
+    "Tebliğ (communiqués), CB Kararnamesi (presidential decrees), CB Kararı (presidential decisions), "
+    "CB Yönetmeliği (presidential regulations), CB Genelgesi (presidential circulars). "
+    "Each type has search and content/article-search tools. "
+    "IMPORTANT: Search is keyword-based (not by law number) - use descriptive terms like "
+    "'katma değer vergisi' instead of '3065', 'gümrük kanunu' instead of '4458'. "
+    "Bakanlar Kurulu Kararı (BKK) is not a separate type - search under CB Kararı or Kanun."
 )
 
 # Initialize client with caching enabled (1 hour TTL by default)
@@ -67,34 +75,34 @@ async def search_kanun(
     )
 ) -> MevzuatSearchResultNew:
     """
-    Search for Turkish laws (Kanun) in both titles and content.
+    Search for Turkish laws (Kanun) in both titles and content on mevzuat.gov.tr.
 
-    This tool searches in law titles and full text content.
-    Use 'search_within_kanun' to search within a specific law's articles and get article-level results.
+    IMPORTANT: Search is keyword-based, NOT by law number. Use descriptive Turkish terms.
+    - WRONG: "3065" or "6362" (numbers won't find laws reliably)
+    - RIGHT: "katma değer vergisi" (finds KDV Kanunu No. 3065)
+    - RIGHT: "sermaye piyasası" (finds Sermaye Piyasası Kanunu No. 6362)
+    - RIGHT: "gümrük kanunu" (finds Gümrük Kanunu No. 4458)
+    - RIGHT: "gelir vergisi" (finds Gelir Vergisi Kanunu No. 193)
+    - RIGHT: "ceza muhakemesi" (finds CMK No. 5271)
+    - RIGHT: "vergi usul" (finds VUK No. 213)
+
+    Use 'search_within_kanun' to search within a specific law's articles after finding its number.
 
     Query Syntax:
     - Simple keyword: yatırımcı
-    - Boolean AND: yatırımcı AND tazmin (both terms)
+    - Boolean AND: yatırımcı AND tazmin (both terms required)
     - Boolean OR: yatırımcı OR müşteri (at least one term)
     - Boolean NOT: yatırımcı NOT kurum (first yes, second no)
     - Required term: +yatırımcı +tazmin (similar to AND)
     - Grouping: (yatırımcı OR müşteri) AND tazmin
     - Exact phrase: "mali sıkıntı" (or use tam_cumle=true)
 
-    Returns:
-    - Law number, title, and acceptance date
-    - Official Gazette publication date and issue number
-    - URLs for viewing online and downloading PDF
-
-    Example queries:
-    - "sermaye piyasası" - Find Capital Markets Law
-    - "vergi OR gelir" - Laws with tax or income in title/content
-    - "ceza muhakemesi" - Find Criminal Procedure Law
+    Returns: Law number, title, acceptance date, Official Gazette date and issue number.
     """
     search_req = MevzuatSearchRequestNew(
         mevzuat_tur="Kanun",
         aranacak_ifade=aranacak_ifade,
-        aranacak_yer=1,  # 1=Title only
+        aranacak_yer=3,  # 3=Title and content
         tam_cumle=tam_cumle,
         mevzuat_no=None,
         baslangic_tarihi=baslangic_tarihi,
@@ -251,34 +259,25 @@ async def search_teblig(
     )
 ) -> MevzuatSearchResultNew:
     """
-    Search for Turkish communiqués (Tebliğ) in both titles and content.
+    Search for Turkish communiqués (Tebliğ) in both titles and content on mevzuat.gov.tr.
 
-    This tool searches in communiqué titles and full text content.
+    IMPORTANT: Search is keyword-based, NOT by number. Use descriptive Turkish terms.
     Communiqués are regulatory documents issued by various government institutions.
 
-    Query Syntax:
-    - Simple keyword: vergi
-    - Boolean AND: vergi AND muafiyet (both terms)
-    - Boolean OR: muafiyet OR istisna (at least one term)
-    - Boolean NOT: vergi NOT gelir (first yes, second no)
-    - Required term: +vergi +muafiyet (similar to AND)
-    - Grouping: (muafiyet OR istisna) AND vergi
-    - Exact phrase: "katma değer vergisi" (or use tam_cumle=true)
-
-    Returns:
-    - Communiqué number, title, and publication date
-    - Official Gazette publication date and issue number
-    - URLs for viewing online
+    Query Syntax: Simple keyword, AND, OR, NOT, +required, (grouping), "exact phrase"
 
     Example queries:
     - "katma değer vergisi" - Find VAT-related communiqués
     - "muafiyet OR istisna" - Communiqués about exemptions
-    - "vergi AND matrah" - Tax base related communiqués
+    - "gümrük" - Customs-related communiqués
+    - "ithalat" or "ihracat" - Import/export communiqués
+
+    Returns: Communiqué number, title, publication date, Official Gazette info.
     """
     search_req = MevzuatSearchRequestNew(
         mevzuat_tur="Tebliğ",
         aranacak_ifade=aranacak_ifade,
-        aranacak_yer=1,  # Search in titles and content
+        aranacak_yer=3,  # 3=Title and content
         tam_cumle=tam_cumle,
         mevzuat_no=None,
         baslangic_tarihi=baslangic_tarihi,
@@ -393,32 +392,22 @@ async def search_cbk(
     """
     Search for Turkish Presidential Decrees (Cumhurbaşkanlığı Kararnamesi) in both titles and content.
 
-    This tool searches in Presidential Decree titles and full text content.
-    Presidential Decrees are executive orders issued by the President of Turkey.
+    IMPORTANT: Search is keyword-based, NOT by decree number. Use descriptive Turkish terms.
+    Presidential Decrees are executive orders issued by the President of Turkey (post-2017).
 
-    Query Syntax:
-    - Simple keyword: organize
-    - Boolean AND: organize AND suç (both terms)
-    - Boolean OR: suç OR ceza (at least one term)
-    - Boolean NOT: organize NOT terör (first yes, second no)
-    - Required term: +organize +suç (similar to AND)
-    - Grouping: (organize OR terör) AND suç
-    - Exact phrase: "organize suç" (or use tam_cumle=true)
-
-    Returns:
-    - Decree number, title, and publication date
-    - Official Gazette publication date and issue number
-    - URLs for viewing online
+    Query Syntax: Simple keyword, AND, OR, NOT, +required, (grouping), "exact phrase"
 
     Example queries:
     - "organize suç" - Find decrees about organized crime
     - "kamu OR devlet" - Decrees about public or state matters
-    - "ceza AND infaz" - Decrees about criminal enforcement
+    - "bakanlık AND teşkilat" - Ministry organization decrees
+
+    Returns: Decree number, title, publication date, Official Gazette info.
     """
     search_req = MevzuatSearchRequestNew(
         mevzuat_tur="Cumhurbaşkanlığı Kararnamesi",
         aranacak_ifade=aranacak_ifade,
-        aranacak_yer=1,  # Search in titles and content
+        aranacak_yer=3,  # 3=Title and content
         tam_cumle=tam_cumle,
         mevzuat_no=None,
         baslangic_tarihi=baslangic_tarihi,
@@ -576,24 +565,19 @@ async def search_cbyonetmelik(
     """
     Search for Turkish Presidential Regulations (Cumhurbaşkanlığı Yönetmeliği / CB Yönetmeliği) in both titles and content.
 
-    This tool searches in regulation titles and full text content.
-    Use 'search_within_cbyonetmelik' to search within a specific regulation's articles and get article-level results.
+    IMPORTANT: Search is keyword-based, NOT by number. Use descriptive Turkish terms.
+    These are regulations issued directly by the Presidency. For institutional regulations (Kurum Yönetmeliği),
+    use 'search_kurum_yonetmelik' instead.
 
-    Boolean operators (must be uppercase):
-    - AND: Both terms must be present (yatırımcı AND tazmin)
-    - OR: At least one term must be present (vergi OR ücret)
-    - NOT: Exclude term (yatırımcı NOT kurum)
-    - Exact phrase: Use quotes ("mali sıkıntı")
+    Query Syntax: Simple keyword, AND, OR, NOT, +required, (grouping), "exact phrase"
 
-    Returns:
-    - List of matching regulations with metadata (number, title, publication date, Official Gazette info)
-    - Total result count and pagination info
-    - Use the 'mevzuat_no' and 'mevzuat_tertip' from results for content retrieval
+    Example queries:
+    - "ihale" - Procurement regulations
+    - "taşınır AND mal" - Movable property regulations
+    - "kamu ihale" - Public procurement regulations
+    - Leave empty to list all, use date filters for period
 
-    Example usage:
-    - List all: search_cbyonetmelik()
-    - Search: search_cbyonetmelik(aranacak_ifade="ihale")
-    - Filter by year: search_cbyonetmelik(baslangic_tarihi="2023", bitis_tarihi="2024")
+    Returns: Regulation number, title, publication date, Official Gazette info.
     """
     logger.info(f"Tool 'search_cbyonetmelik' called with query: {aranacak_ifade}")
 
@@ -601,7 +585,7 @@ async def search_cbyonetmelik(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="CB Yönetmeliği",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=1,
+            aranacak_yer=3,  # 3=Title and content
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
@@ -756,33 +740,24 @@ async def search_cbbaskankarar(
     """
     Search for Turkish Presidential Decisions (Cumhurbaşkanı Kararı) in both titles and content.
 
-    This tool searches in Presidential Decision titles and full text content.
-    Presidential Decisions are executive decisions issued by the President of Turkey (different from Presidential Decrees/Kararnamesi).
+    IMPORTANT: Search is keyword-based, NOT by decision number. Use descriptive Turkish terms.
+    Presidential Decisions are executive decisions (different from Presidential Decrees/Kararnamesi).
+    Note: Bakanlar Kurulu Kararı (BKK) is NOT a separate type - older BKKs may appear here or in Kanun.
 
-    Query Syntax:
-    - Simple keyword: atama
-    - Boolean AND: atama AND tayin (both terms)
-    - Boolean OR: atama OR görevden (at least one term)
-    - Boolean NOT: atama NOT görevden (first yes, second no)
-    - Required term: +atama +tayin (similar to AND)
-    - Grouping: (atama OR tayin) AND görev
-    - Exact phrase: "görevden alma" (or use tam_cumle=true)
-    - Empty search: List all decisions (use date filters)
-
-    Returns:
-    - Decision number, title, and publication date
-    - Official Gazette publication date and issue number
-    - URLs for viewing online (PDF format)
+    Query Syntax: Simple keyword, AND, OR, NOT, +required, (grouping), "exact phrase"
 
     Example queries:
-    - "atama tayin" - Find decisions about appointments
+    - "atama" - Find decisions about appointments
+    - "ihracat AND rejim" - Export regime decisions
+    - "vergi" or "gümrük" - Tax or customs decisions
     - Leave empty with dates to list all decisions from a period
-    - "görevden AND alma" - Decisions about dismissals
+
+    Returns: Decision number, title, publication date, Official Gazette info. PDF format only.
     """
     search_req = MevzuatSearchRequestNew(
         mevzuat_tur="Cumhurbaşkanı Kararı",
         aranacak_ifade=aranacak_ifade or "",
-        aranacak_yer=1,  # Search in titles and content
+        aranacak_yer=3,  # 3=Title and content
         tam_cumle=tam_cumle,
         mevzuat_no=None,
         baslangic_tarihi=baslangic_tarihi,
@@ -896,28 +871,18 @@ async def search_cbgenelge(
     )
 ) -> MevzuatSearchResultNew:
     """
-    Search for Turkish Presidential Circulars (Cumhurbaşkanlığı Genelgesi / CB Genelgesi) in titles.
+    Search for Turkish Presidential Circulars (Cumhurbaşkanlığı Genelgesi / CB Genelgesi) in titles and content.
 
-    This tool searches in circular titles (search is title-only by default for this document type).
-    Use 'get_cbgenelge_content' to retrieve the full PDF content of a specific circular.
+    IMPORTANT: Search is keyword-based, NOT by circular number. Use descriptive Turkish terms.
+    Use 'get_cbgenelge_content' with mevzuat_no and resmi_gazete_tarihi to retrieve full PDF content.
 
-    Boolean operators (must be uppercase):
-    - AND: Both terms must be present (organize AND suç)
-    - OR: At least one term must be present (suç OR ceza)
-    - NOT: Exclude term (organize NOT terör)
-    - Exact phrase: Use quotes ("organize suç")
+    Query Syntax: Simple keyword, AND, OR, NOT, +required, (grouping), "exact phrase"
 
-    Returns:
-    - List of matching circulars with metadata (number, title, publication date, Official Gazette info)
-    - Total result count and pagination info
-    - Use the 'mevzuat_no' and 'resmi_gazete_tarihi' from results for content retrieval
+    Example queries:
+    - "koordinasyon" - Coordination circulars
+    - Leave empty with dates to list all circulars from a period
 
-    Note: Presidential Circulars are available as PDF files only.
-
-    Example usage:
-    - List all: search_cbgenelge()
-    - Search: search_cbgenelge(aranacak_ifade="koordinasyon")
-    - Filter by year: search_cbgenelge(baslangic_tarihi="2024", bitis_tarihi="2025")
+    Returns: Circular number, title, publication date, Official Gazette info. PDF format only.
     """
     logger.info(f"Tool 'search_cbgenelge' called with query: {aranacak_ifade}")
 
@@ -925,7 +890,7 @@ async def search_cbgenelge(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="CB Genelgesi",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=1,
+            aranacak_yer=3,  # 3=Title and content
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
@@ -1044,29 +1009,20 @@ async def search_khk(
     )
 ) -> MevzuatSearchResultNew:
     """
-    Search for Turkish Decree Laws (Kanun Hükmünde Kararname / KHK) by title.
+    Search for Turkish Decree Laws (Kanun Hükmünde Kararname / KHK) in titles and content.
 
-    Note: KHKs were abolished after the 2017 constitutional referendum. The last KHKs were issued in 2018.
-    However, previously enacted KHKs remain in force unless repealed.
+    IMPORTANT: Search is keyword-based, NOT by KHK number. Use descriptive Turkish terms.
+    KHKs were abolished after the 2017 constitutional referendum (last issued 2018).
+    Previously enacted KHKs remain in force unless repealed.
 
-    Query Syntax:
-    - Simple keyword: değişiklik
-    - Exact phrase: "sağlık düzenleme" (use quotes or set tam_cumle=True)
-    - AND operator: sağlık AND düzenleme (both terms must be present)
-    - OR operator: bakanlık OR kurum (at least one term must be present)
-    - NOT operator: kanun NOT yürürlük (first term present, second must not be)
-    - Wildcard: değişiklik* (matches değişiklikler, değişikliği, etc.)
-    - Combinations: (sağlık OR eğitim) AND düzenleme NOT yürürlük
+    Query Syntax: Simple keyword, AND, OR, NOT, +required, (grouping), "exact phrase"
 
-    Returns:
-    - List of matching KHKs with numbers, titles, dates, and metadata
-    - Pagination info and total result count
-    - Each KHK includes: mevzuat_no, mev_adi, kabul_tarih, resmi_gazete_tarihi, etc.
+    Example queries:
+    - "sağlık AND düzenleme" - Health-related KHKs
+    - "anayasa" - Constitutional KHKs
+    - Leave empty with dates (e.g., 2010-2018) to list all KHKs from a period
 
-    Example usage:
-    - search_khk(aranacak_ifade="anayasa", baslangic_tarihi="2018") → Find constitutional KHKs from 2018
-    - search_khk(baslangic_tarihi="2010", bitis_tarihi="2018") → List all KHKs from 2010-2018
-    - search_khk(aranacak_ifade="sağlık AND düzenleme") → Find health-related KHKs
+    Returns: KHK number, title, dates, Official Gazette info.
     """
     logger.info(f"Tool 'search_khk' called: '{aranacak_ifade}', dates: {baslangic_tarihi}-{bitis_tarihi}")
 
@@ -1074,7 +1030,7 @@ async def search_khk(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="KHK",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=1,  # Title search
+            aranacak_yer=3,  # 3=Title and content
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
@@ -1227,29 +1183,19 @@ async def search_tuzuk(
     )
 ) -> MevzuatSearchResultNew:
     """
-    Search for Turkish Statutes/Regulations (Tüzük) by title.
+    Search for Turkish Statutes/Regulations (Tüzük) in titles and content.
 
+    IMPORTANT: Search is keyword-based, NOT by statute number. Use descriptive Turkish terms.
     Tüzük are regulatory statutes that implement and detail the provisions of laws.
-    They are issued by government agencies and regulatory bodies.
 
-    Query Syntax:
-    - Simple keyword: tapu
-    - Exact phrase: "sicil kayıt" (use quotes or set tam_cumle=True)
-    - AND operator: tapu AND sicil (both terms must be present)
-    - OR operator: tescil OR ilan (at least one term must be present)
-    - NOT operator: vakıf NOT kurul (first term present, second must not be)
-    - Wildcard: tescil* (matches tescil, tescile, tescili, etc.)
-    - Combinations: (tapu OR kadastro) AND sicil NOT iptal
+    Query Syntax: Simple keyword, AND, OR, NOT, +required, (grouping), "exact phrase"
 
-    Returns:
-    - List of matching statutes with numbers, titles, dates, and metadata
-    - Pagination info and total result count
-    - Each statute includes: mevzuat_no, mev_adi, kabul_tarih, resmi_gazete_tarihi, etc.
+    Example queries:
+    - "tapu" - Land registry related statutes
+    - "vakıf AND tescil" - Foundation registration statutes
+    - Leave empty with dates to list all statutes from a period
 
-    Example usage:
-    - search_tuzuk(aranacak_ifade="tapu") → Find land registry related statutes
-    - search_tuzuk(baslangic_tarihi="2008", bitis_tarihi="2013") → List all statutes from 2008-2013
-    - search_tuzuk(aranacak_ifade="vakıf AND tescil") → Find foundation registration statutes
+    Returns: Statute number, title, dates, Official Gazette info.
     """
     logger.info(f"Tool 'search_tuzuk' called: '{aranacak_ifade}', dates: {baslangic_tarihi}-{bitis_tarihi}")
 
@@ -1257,7 +1203,7 @@ async def search_tuzuk(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="Tuzuk",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=1,  # Title search
+            aranacak_yer=3,  # 3=Title and content
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
@@ -1410,31 +1356,23 @@ async def search_kurum_yonetmelik(
     )
 ) -> MevzuatSearchResultNew:
     """
-    Search for Institutional and Organizational Regulations (Kurum ve Kuruluş Yönetmeliği) by title.
+    Search for Institutional/Organizational Regulations (Kurum ve Kuruluş Yönetmeliği) in titles and content.
 
-    These are regulations issued by governmental institutions and organizations to regulate
-    their internal operations, procedures, and administrative matters.
+    IMPORTANT: Search is keyword-based, NOT by regulation number. Use descriptive Turkish terms.
+    These are regulations issued by governmental institutions (ministries, agencies, boards).
+    This is the largest dataset with 8686+ regulations. Use for: Gümrük Yönetmeliği, İthalat/İhracat
+    Yönetmeliği, and similar institutional regulations.
 
-    Note: This is the largest dataset with 8686+ regulations across all government institutions.
+    Query Syntax: Simple keyword, AND, OR, NOT, +required, (grouping), "exact phrase"
 
-    Query Syntax:
-    - Simple keyword: nükleer
-    - Exact phrase: "ihracat kontrol" (use quotes or set tam_cumle=True)
-    - AND operator: nükleer AND ihracat (both terms must be present)
-    - OR operator: denetim OR teftiş (at least one term must be present)
-    - NOT operator: mali NOT ceza (first term present, second must not be)
-    - Wildcard: kontrol* (matches kontrol, kontrolü, kontrole, etc.)
-    - Combinations: (nükleer OR kimyasal) AND ihracat NOT silah
+    Example queries:
+    - "gümrük" - Customs regulations (e.g., Gümrük Yönetmeliği)
+    - "ithalat" or "ihracat" - Import/export regulations
+    - "nükleer" - Nuclear regulations
+    - "adalet AND akademi" - Justice academy regulations
+    - Leave empty with dates to list all regulations from a period
 
-    Returns:
-    - List of matching regulations with numbers, titles, dates, and metadata
-    - Pagination info and total result count
-    - Each regulation includes: mevzuat_no, mev_adi, resmi_gazete_tarihi, etc.
-
-    Example usage:
-    - search_kurum_yonetmelik(aranacak_ifade="nükleer") → Find nuclear-related regulations
-    - search_kurum_yonetmelik(baslangic_tarihi="2025") → List all regulations from 2025
-    - search_kurum_yonetmelik(aranacak_ifade="adalet AND akademi") → Find justice academy regulations
+    Returns: Regulation number, title, dates, Official Gazette info.
     """
     logger.info(f"Tool 'search_kurum_yonetmelik' called: '{aranacak_ifade}', dates: {baslangic_tarihi}-{bitis_tarihi}")
 
@@ -1442,7 +1380,7 @@ async def search_kurum_yonetmelik(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="Kurum Yönetmeliği",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=1,  # Title search
+            aranacak_yer=3,  # 3=Title and content
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
