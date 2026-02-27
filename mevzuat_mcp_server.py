@@ -5,7 +5,7 @@ Supports searching and PDF content extraction for Kanun (laws).
 """
 import logging
 from pydantic import Field
-from typing import Optional
+from typing import Optional, Literal
 
 from fastmcp import FastMCP
 
@@ -67,6 +67,12 @@ async def search_kanun(
         ge=1,
         description="Page number for pagination (starts at 1)"
     ),
+    aranacak_yer: int = Field(
+        3,
+        ge=1,
+        le=3,
+        description="Where to search: 1=Title only, 2=Content only, 3=Both title and content (default)"
+    ),
     page_size: int = Field(
         25,
         ge=1,
@@ -102,7 +108,7 @@ async def search_kanun(
     search_req = MevzuatSearchRequestNew(
         mevzuat_tur="Kanun",
         aranacak_ifade=aranacak_ifade,
-        aranacak_yer=3,  # 3=Title and content
+        aranacak_yer=aranacak_yer,
         tam_cumle=tam_cumle,
         mevzuat_no=None,
         baslangic_tarihi=baslangic_tarihi,
@@ -251,6 +257,12 @@ async def search_teblig(
         ge=1,
         description="Page number for pagination (starts at 1)"
     ),
+    aranacak_yer: int = Field(
+        3,
+        ge=1,
+        le=3,
+        description="Where to search: 1=Title only, 2=Content only, 3=Both title and content (default)"
+    ),
     page_size: int = Field(
         25,
         ge=1,
@@ -277,7 +289,7 @@ async def search_teblig(
     search_req = MevzuatSearchRequestNew(
         mevzuat_tur="Tebliğ",
         aranacak_ifade=aranacak_ifade,
-        aranacak_yer=3,  # 3=Title and content
+        aranacak_yer=aranacak_yer,
         tam_cumle=tam_cumle,
         mevzuat_no=None,
         baslangic_tarihi=baslangic_tarihi,
@@ -382,6 +394,12 @@ async def search_cbk(
         ge=1,
         description="Page number for pagination (starts at 1)"
     ),
+    aranacak_yer: int = Field(
+        3,
+        ge=1,
+        le=3,
+        description="Where to search: 1=Title only, 2=Content only, 3=Both title and content (default)"
+    ),
     page_size: int = Field(
         25,
         ge=1,
@@ -407,7 +425,7 @@ async def search_cbk(
     search_req = MevzuatSearchRequestNew(
         mevzuat_tur="Cumhurbaşkanlığı Kararnamesi",
         aranacak_ifade=aranacak_ifade,
-        aranacak_yer=3,  # 3=Title and content
+        aranacak_yer=aranacak_yer,
         tam_cumle=tam_cumle,
         mevzuat_no=None,
         baslangic_tarihi=baslangic_tarihi,
@@ -555,6 +573,12 @@ async def search_cbyonetmelik(
         ge=1,
         description="Page number (1-indexed)"
     ),
+    aranacak_yer: int = Field(
+        3,
+        ge=1,
+        le=3,
+        description="Where to search: 1=Title only, 2=Content only, 3=Both title and content (default)"
+    ),
     page_size: int = Field(
         25,
         ge=1,
@@ -585,7 +609,7 @@ async def search_cbyonetmelik(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="CB Yönetmeliği",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=3,  # 3=Title and content
+            aranacak_yer=aranacak_yer,
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
@@ -730,6 +754,12 @@ async def search_cbbaskankarar(
         ge=1,
         description="Page number for pagination (starts at 1)"
     ),
+    aranacak_yer: int = Field(
+        3,
+        ge=1,
+        le=3,
+        description="Where to search: 1=Title only, 2=Content only, 3=Both title and content (default)"
+    ),
     page_size: int = Field(
         25,
         ge=1,
@@ -757,7 +787,7 @@ async def search_cbbaskankarar(
     search_req = MevzuatSearchRequestNew(
         mevzuat_tur="Cumhurbaşkanı Kararı",
         aranacak_ifade=aranacak_ifade or "",
-        aranacak_yer=3,  # 3=Title and content
+        aranacak_yer=aranacak_yer,
         tam_cumle=tam_cumle,
         mevzuat_no=None,
         baslangic_tarihi=baslangic_tarihi,
@@ -863,6 +893,12 @@ async def search_cbgenelge(
         ge=1,
         description="Page number (1-indexed)"
     ),
+    aranacak_yer: int = Field(
+        3,
+        ge=1,
+        le=3,
+        description="Where to search: 1=Title only, 2=Content only, 3=Both title and content (default)"
+    ),
     page_size: int = Field(
         25,
         ge=1,
@@ -890,7 +926,7 @@ async def search_cbgenelge(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="CB Genelgesi",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=3,  # 3=Title and content
+            aranacak_yer=aranacak_yer,
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
@@ -1001,6 +1037,12 @@ async def search_khk(
         ge=1,
         description="Page number of results to retrieve (starts from 1)"
     ),
+    aranacak_yer: int = Field(
+        3,
+        ge=1,
+        le=3,
+        description="Where to search: 1=Title only, 2=Content only, 3=Both title and content (default)"
+    ),
     page_size: int = Field(
         25,
         ge=1,
@@ -1030,7 +1072,7 @@ async def search_khk(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="KHK",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=3,  # 3=Title and content
+            aranacak_yer=aranacak_yer,
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
@@ -1175,6 +1217,12 @@ async def search_tuzuk(
         ge=1,
         description="Page number of results to retrieve (starts from 1)"
     ),
+    aranacak_yer: int = Field(
+        3,
+        ge=1,
+        le=3,
+        description="Where to search: 1=Title only, 2=Content only, 3=Both title and content (default)"
+    ),
     page_size: int = Field(
         25,
         ge=1,
@@ -1203,7 +1251,7 @@ async def search_tuzuk(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="Tuzuk",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=3,  # 3=Title and content
+            aranacak_yer=aranacak_yer,
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
@@ -1348,6 +1396,12 @@ async def search_kurum_yonetmelik(
         ge=1,
         description="Page number of results to retrieve (starts from 1)"
     ),
+    aranacak_yer: int = Field(
+        3,
+        ge=1,
+        le=3,
+        description="Where to search: 1=Title only, 2=Content only, 3=Both title and content (default)"
+    ),
     page_size: int = Field(
         25,
         ge=1,
@@ -1380,7 +1434,7 @@ async def search_kurum_yonetmelik(
         search_req = MevzuatSearchRequestNew(
             mevzuat_tur="Kurum Yönetmeliği",
             aranacak_ifade=aranacak_ifade or "",
-            aranacak_yer=3,  # 3=Title and content
+            aranacak_yer=aranacak_yer,
             tam_cumle=tam_cumle,
             mevzuat_no=None,
             baslangic_tarihi=baslangic_tarihi,
