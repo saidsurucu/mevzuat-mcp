@@ -7,7 +7,7 @@ Bu proje, Adalet Bakanlığı'na ait Mevzuat Bilgi Sistemi'ne (`mevzuat.gov.tr`)
 🎯 **Temel Özellikler**
 
 * Adalet Bakanlığı Mevzuat Bilgi Sistemi'ne programatik erişim için standart bir MCP arayüzü.
-* 18 farklı tool ile kapsamlı mevzuat erişimi:
+* 21 farklı tool ile kapsamlı mevzuat erişimi:
     * **Kanun (Laws)** - Türkiye Cumhuriyeti kanunları
     * **KHK (Decree Laws)** - Kanun Hükmünde Kararnameler
     * **Tüzük (Statutes)** - Tüzükler
@@ -18,8 +18,9 @@ Bu proje, Adalet Bakanlığı'na ait Mevzuat Bilgi Sistemi'ne (`mevzuat.gov.tr`)
     * **CB Genelgesi (Presidential Circulars)** - Cumhurbaşkanlığı genelgeleri
     * **Tebliğ (Communiqués)** - Tebliğler
 * Her mevzuat türü için çift tool yapısı:
-    * **Arama tool'u**: Başlıkta arama, Boolean operatörler (AND, OR, NOT), tarih filtreleme
-    * **İçinde arama tool'u**: Madde bazında arama, alakalılık skoru ile sıralama
+    * **Arama tool'u**: Başlık ve içerikte arama, Boolean operatörler (AND, OR, NOT), tarih filtreleme
+    * **İçinde arama tool'u**: Madde bazında arama (keyword + semantik), alakalılık skoru ile sıralama
+* **Semantik Arama (Yeni!)**: Tüm 9 `search_within_*` aracında `semantic=True` parametresi ile doğal dilde anlam tabanlı arama. OpenRouter API üzerinden embedding modelleri kullanır.
 * Gelişmiş özellikler:
     * PDF'leri Mistral OCR ile metin çıkarma (CB Kararı ve CB Genelgesi için)
     * HTML'den Markdown'a otomatik dönüştürme
@@ -96,75 +97,106 @@ Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP iste
 4.  Claude Desktop'ı kapatıp yeniden başlatın.
 
 ---
-🔑 **Mistral OCR için API Anahtarı (Opsiyonel)**
+🔑 **API Anahtarları (Opsiyonel)**
 
-CB Kararı ve CB Genelgesi gibi PDF tabanlı mevzuatlar için Mistral OCR kullanılır. OCR özelliğini aktif etmek için:
+### Semantik Arama - OpenRouter API
+
+Tüm `search_within_*` araçlarında `semantic=True` ile doğal dilde arama yapabilmek için:
+
+1. [OpenRouter](https://openrouter.ai/) üzerinden API anahtarı alın
+2. Environment variable olarak ayarlayın:
+   ```bash
+   OPENROUTER_API_KEY=your_api_key_here
+   ```
+3. Varsayılan model: `google/gemini-embedding-001` (3072 boyut). Alternatif olarak:
+   ```bash
+   EMBEDDING_MODEL=intfloat/multilingual-e5-large  # 1024 boyut
+   ```
+4. API anahtarı olmadan da tüm araçlar çalışır, sadece `semantic=True` kullanılamaz
+
+### Mistral OCR
+
+CB Kararı ve CB Genelgesi gibi PDF tabanlı mevzuatlar için Mistral OCR kullanılır:
 
 1. [Mistral AI Console](https://console.mistral.ai/) üzerinden API anahtarı alın
-2. **uvx ile çalıştırırken** environment variable olarak verin:
+2. Environment variable olarak ayarlayın:
    ```bash
-   MISTRAL_API_KEY=your_api_key_here uvx --from git+https://github.com/saidsurucu/mevzuat-mcp mevzuat-mcp
+   MISTRAL_API_KEY=your_api_key_here
    ```
 3. API anahtarı olmadan da sistem çalışır, ancak PDF'ler markitdown ile işlenir (daha düşük kalite)
 
 ---
 🛠️ **Kullanılabilir Araçlar (MCP Tools)**
 
-Bu FastMCP sunucusu LLM modelleri için **18 araç** sunar. Her mevzuat türü için 2 araç bulunur:
+Bu FastMCP sunucusu LLM modelleri için **21 araç** sunar.
 
 ### Kanun (Laws)
-* **`search_kanun`**: Kanun başlıklarında arama yapar
-* **`search_within_kanun`**: Kanun maddelerinde anahtar kelime araması yapar
+* **`search_kanun`**: Kanun başlık ve içeriklerinde arama yapar
+* **`search_within_kanun`**: Kanun maddelerinde anahtar kelime veya semantik arama yapar
 
 ### KHK (Decree Laws)
-* **`search_khk`**: KHK başlıklarında arama yapar
-* **`search_within_khk`**: KHK maddelerinde anahtar kelime araması yapar
+* **`search_khk`**: KHK başlık ve içeriklerinde arama yapar
+* **`search_within_khk`**: KHK maddelerinde anahtar kelime veya semantik arama yapar
 
 ### Tüzük (Statutes)
-* **`search_tuzuk`**: Tüzük başlıklarında arama yapar
-* **`search_within_tuzuk`**: Tüzük maddelerinde anahtar kelime araması yapar
+* **`search_tuzuk`**: Tüzük başlık ve içeriklerinde arama yapar
+* **`search_within_tuzuk`**: Tüzük maddelerinde anahtar kelime veya semantik arama yapar
 
 ### Kurum Yönetmeliği (Institutional Regulations)
-* **`search_kurum_yonetmelik`**: Kurum yönetmeliği başlıklarında arama yapar
-* **`search_within_kurum_yonetmelik`**: Kurum yönetmeliği maddelerinde anahtar kelime araması yapar
+* **`search_kurum_yonetmelik`**: Kurum yönetmeliği başlık ve içeriklerinde arama yapar
+* **`search_within_kurum_yonetmelik`**: Kurum yönetmeliği maddelerinde anahtar kelime veya semantik arama yapar
 
 ### Cumhurbaşkanlığı Kararnamesi (Presidential Decrees)
-* **`search_cbk`**: CB Kararnamesi başlıklarında arama yapar
-* **`search_within_cbk`**: CB Kararnamesi maddelerinde anahtar kelime araması yapar
+* **`search_cbk`**: CB Kararnamesi başlık ve içeriklerinde arama yapar
+* **`search_within_cbk`**: CB Kararnamesi maddelerinde anahtar kelime veya semantik arama yapar
 
 ### Cumhurbaşkanı Kararı (Presidential Decisions)
-* **`search_cbbaskankarar`**: CB Kararı başlıklarında arama yapar (PDF - OCR destekli)
-* **`search_within_cbbaskankarar`**: CB Kararı içeriğinde anahtar kelime araması yapar
+* **`search_cbbaskankarar`**: CB Kararı başlık ve içeriklerinde arama yapar
+* **`get_cbbaskankarar_content`**: CB Kararı tam içeriğini getirir (PDF - OCR destekli)
+* **`search_within_cbbaskankarar`**: CB Kararı içeriğinde anahtar kelime veya semantik arama yapar
 
 ### CB Yönetmeliği (Presidential Regulations)
-* **`search_cbyonetmelik`**: CB Yönetmeliği başlıklarında arama yapar
-* **`search_within_cbyonetmelik`**: CB Yönetmeliği maddelerinde anahtar kelime araması yapar
+* **`search_cbyonetmelik`**: CB Yönetmeliği başlık ve içeriklerinde arama yapar
+* **`search_within_cbyonetmelik`**: CB Yönetmeliği maddelerinde anahtar kelime veya semantik arama yapar
 
 ### CB Genelgesi (Presidential Circulars)
-* **`search_cbgenelge`**: CB Genelgesi başlıklarında arama yapar (PDF - OCR destekli)
-* **`search_within_cbgenelge`**: CB Genelgesi içeriğinde anahtar kelime araması yapar
+* **`search_cbgenelge`**: CB Genelgesi başlıklarında arama yapar
+* **`get_cbgenelge_content`**: CB Genelgesi tam içeriğini getirir (PDF - OCR destekli)
+* **`search_within_cbgenelge`**: CB Genelgesi içeriğinde anahtar kelime veya semantik arama yapar
 
 ### Tebliğ (Communiqués)
-* **`search_teblig`**: Tebliğ başlıklarında arama yapar
-* **`search_within_teblig`**: Tebliğ maddelerinde anahtar kelime araması yapar
+* **`search_teblig`**: Tebliğ başlık ve içeriklerinde arama yapar
+* **`get_teblig_content`**: Tebliğ tam içeriğini getirir
+* **`search_within_teblig`**: Tebliğ maddelerinde anahtar kelime veya semantik arama yapar
 
 ### Ortak Parametreler
 
 **Arama Tool'ları için:**
 * `aranacak_ifade`: Aranacak kelime veya kelime grupları (AND, OR, NOT operatörleri desteklenir)
 * `tam_cumle`: Tam cümle eşleşmesi (exact phrase)
-* `baslangic_tarihi` / `bitis_tarihi`: Tarih aralığı filtreleme (YYYY-MM-DD formatında)
+* `baslangic_tarihi` / `bitis_tarihi`: Tarih aralığı filtreleme
 * `page_number`, `page_size`: Sayfalama
 
 **İçinde Arama Tool'ları için:**
 * `mevzuat_no`: Mevzuat numarası (arama sonucundan alınır)
-* `keyword`: Aranacak anahtar kelime
-* `case_sensitive`: Büyük/küçük harf duyarlılığı
+* `keyword`: Aranacak anahtar kelime veya doğal dilde sorgu
+* `semantic`: `True` ise semantik arama, `False` ise anahtar kelime araması (varsayılan: `False`)
+* `case_sensitive`: Büyük/küçük harf duyarlılığı (sadece keyword modunda)
 * `max_results`: Maksimum sonuç sayısı
 
-### Döndürülen Değerler
-* **Arama tool'ları**: `MevzuatSearchResultNew` (mevzuat listesi, toplam sayı, sayfalama bilgisi)
-* **İçinde arama tool'ları**: Alakalılık skoruna göre sıralanmış madde listesi (JSON formatında)
+### Arama Modları
+
+**Keyword Modu** (`semantic=False`, varsayılan):
+```
+keyword: "yatırımcı AND tazmin"
+```
+Boolean operatörler (AND, OR, NOT) ile kesin kelime eşleşmesi. Operatörler BÜYÜK HARF olmalıdır.
+
+**Semantik Mod** (`semantic=True`):
+```
+keyword: "yatırımcının zararının tazmini"
+```
+Doğal dilde anlam tabanlı arama. Kelime eşleşmesi aramaz, kavramsal benzerlik ile sonuç döner. `OPENROUTER_API_KEY` gerektirir.
 
 ---
 📜 **Lisans**
