@@ -13,7 +13,9 @@
       "playwright==1.55.0",
       "mistralai",
       "python-dotenv",
-      "pydantic"
+      "pydantic",
+      "numpy",
+      "openai"
     ]
   }
 }

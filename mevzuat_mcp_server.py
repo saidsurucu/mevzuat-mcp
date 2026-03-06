@@ -5,7 +5,7 @@ Supports searching and PDF content extraction for Kanun (laws).
 """
 import logging
 from pydantic import Field
-from typing import Optional, Literal
+from typing import Optional
 
 from fastmcp import FastMCP
 
@@ -15,7 +15,16 @@ from mevzuat_models import (
     MevzuatSearchResultNew,
     MevzuatArticleContent
 )
-from article_search import search_articles_by_keyword, ArticleSearchResult, format_search_results
+from article_search import search_articles_by_keyword, ArticleSearchResult, format_search_results, _matches_query
+
+# Semantic search (optional, requires OPENROUTER_API_KEY)
+from semantic_search.embedder import is_openrouter_available
+SEMANTIC_SEARCH_AVAILABLE = is_openrouter_available()
+if SEMANTIC_SEARCH_AVAILABLE:
+    from semantic_search import OpenRouterEmbedder, VectorStore, MevzuatProcessor, EmbeddingCache
+    _embedder = OpenRouterEmbedder()
+    _processor = MevzuatProcessor()
+    _embedding_cache = EmbeddingCache(ttl=3600)
 
 # Simple logging setup
 logging.basicConfig(
@@ -29,11 +38,12 @@ logger = logging.getLogger(__name__)
 app = FastMCP(
     name="MevzuatGovTrMCP",
     instructions="MCP server for mevzuat.gov.tr - Turkish legislation search and content retrieval. "
-    "Supports 9 legislation types (18 tools): "
+    "Supports 9 legislation types (21 tools): "
     "Kanun (laws), KHK (decree laws), Tüzük (statutes), Kurum Yönetmeliği (institutional regulations), "
     "Tebliğ (communiqués), CB Kararnamesi (presidential decrees), CB Kararı (presidential decisions), "
     "CB Yönetmeliği (presidential regulations), CB Genelgesi (presidential circulars). "
-    "Each type has search and content/article-search tools. "
+    "Each type has search and search_within tools. All 9 search_within tools support both keyword (Boolean AND/OR/NOT) "
+    "and semantic search (natural language, requires OPENROUTER_API_KEY). Set semantic=True for semantic search. "
     "IMPORTANT: Search is keyword-based (not by law number) - use descriptive terms like "
     "'katma değer vergisi' instead of '3065', 'gümrük kanunu' instead of '4458'. "
     "Bakanlar Kurulu Kararı (BKK) is not a separate type - search under CB Kararı or Kanun."
@@ -42,6 +52,166 @@ app = FastMCP(
 # Initialize client with caching enabled (1 hour TTL by default)
 # Mistral API key will be loaded from environment variable MISTRAL_API_KEY
 mevzuat_client = MevzuatApiClientNew(cache_ttl=3600, enable_cache=True)
+
+
+# ============================================================================
+# Shared semantic search helper
+# ============================================================================
+
+async def _semantic_search_within(
+    mevzuat_no: str,
+    query: str,
+    mevzuat_tur: int,
+    mevzuat_tertip: str = "5",
+    max_results: int = 10,
+    threshold: float = 0.3,
+    resmi_gazete_tarihi: Optional[str] = None,
+) -> str:
+    """Shared helper for semantic search within any legislation type."""
+    # 1. Get content (already cached by mevzuat_client)
+    content_result = await mevzuat_client.get_content(
+        mevzuat_no=mevzuat_no,
+        mevzuat_tur=mevzuat_tur,
+        mevzuat_tertip=mevzuat_tertip,
+        resmi_gazete_tarihi=resmi_gazete_tarihi,
+    )
+
+    if content_result.error_message:
+        return f"Error fetching content: {content_result.error_message}"
+
+    if not content_result.markdown_content:
+        return f"Error: No content found for mevzuat {mevzuat_no}"
+
+    content = content_result.markdown_content
+
+    # 2. Check embedding cache
+    cached = _embedding_cache.get(mevzuat_tur, mevzuat_tertip, mevzuat_no, content)
+    if cached:
+        vector_store, chunks = cached
+    else:
+        # 3. Process into chunks
+        chunks = _processor.process_legislation(content, mevzuat_no, mevzuat_tur)
+        if not chunks:
+            return f"Error: Could not split content into searchable segments for mevzuat {mevzuat_no}"
+
+        # 4. Encode documents
+        texts = [c.text for c in chunks]
+        titles = [c.title for c in chunks]
+        embeddings = _embedder.encode_documents(texts, titles)
+
+        # 5. Build vector store
+        vector_store = VectorStore(dimension=_embedder.dimension)
+        vector_store.add_documents(
+            ids=[c.chunk_id for c in chunks],
+            texts=texts,
+            embeddings=embeddings,
+            metadata=[c.metadata for c in chunks],
+        )
+
+        # 6. Cache
+        _embedding_cache.put(mevzuat_tur, mevzuat_tertip, mevzuat_no, content, vector_store, chunks)
+
+    # 7. Search
+    query_embedding = _embedder.encode_query(query)
+    results = vector_store.search(query_embedding, top_k=max_results, threshold=threshold)
+
+    if not results:
+        return f"No semantically similar content found for '{query}' in mevzuat {mevzuat_no}"
+
+    # 8. Format results
+    # Determine method description
+    chunk_type = chunks[0].metadata.get('type', 'chunk') if chunks else 'chunk'
+    method = "Article-based semantic search" if chunk_type == 'article' else "Chunk-based semantic search"
+
+    output = []
+    output.append("Semantic Search Results")
+    output.append(f"Query: \"{query}\"")
+    output.append(f"Legislation: {mevzuat_no} (type: {mevzuat_tur})")
+    output.append(f"Method: {method} | Results: {len(results)}")
+    output.append("")
+
+    for doc, score in results:
+        if chunk_type == 'article':
+            madde_no = doc.metadata.get('madde_no', '?')
+            madde_title = doc.metadata.get('madde_title', '')
+            output.append(f"=== MADDE {madde_no} === (Similarity: {score:.2f})")
+            if madde_title:
+                output.append(f"Title: {madde_title}")
+        else:
+            chunk_idx = doc.metadata.get('chunk_index', 0)
+            total = doc.metadata.get('total_chunks', 0)
+            output.append(f"=== Chunk {chunk_idx + 1}/{total} === (Similarity: {score:.2f})")
+
+        output.append("")
+        output.append(doc.text)
+        output.append("")
+
+    return "\n".join(output)
+
+
+async def _keyword_search_chunks(
+    content: str,
+    keyword: str,
+    mevzuat_no: str,
+    mevzuat_tur: int,
+    case_sensitive: bool = False,
+    max_results: int = 25,
+) -> str:
+    """Keyword search for chunk-based content (no article structure)."""
+    # Try article split first for Teblig
+    if mevzuat_tur == 9:
+        from article_search import split_into_articles as _split
+        articles = _split(content)
+        if articles:
+            matches = search_articles_by_keyword(content, keyword, case_sensitive, max_results)
+            if matches:
+                result = ArticleSearchResult(
+                    mevzuat_no=mevzuat_no, mevzuat_tur=mevzuat_tur,
+                    keyword=keyword, total_matches=len(matches), matching_articles=matches
+                )
+                return format_search_results(result)
+
+    # Chunk-based keyword search
+    from semantic_search.processor import MevzuatProcessor as _MevzuatProcessor
+    processor = _processor if SEMANTIC_SEARCH_AVAILABLE else _MevzuatProcessor()
+    chunks = processor.process_legislation(content, mevzuat_no, mevzuat_tur)
+
+    if not chunks:
+        return f"Error: Could not split content into searchable segments for mevzuat {mevzuat_no}"
+
+    scored_chunks = []
+    for chunk in chunks:
+        matches, score = _matches_query(chunk.text, keyword, case_sensitive)
+        if matches and score > 0:
+            scored_chunks.append((chunk, score))
+
+    scored_chunks.sort(key=lambda x: x[1], reverse=True)
+    scored_chunks = scored_chunks[:max_results]
+
+    if not scored_chunks:
+        return f"No matches found for '{keyword}' in mevzuat {mevzuat_no}"
+
+    output = []
+    output.append(f"Keyword: '{keyword}'")
+    output.append(f"Total matching segments: {len(scored_chunks)}")
+    output.append("")
+
+    for chunk, score in scored_chunks:
+        chunk_type = chunk.metadata.get('type', 'chunk')
+        if chunk_type == 'article':
+            madde_no = chunk.metadata.get('madde_no', '?')
+            output.append(f"=== MADDE {madde_no} ===")
+        else:
+            chunk_idx = chunk.metadata.get('chunk_index', 0)
+            total = chunk.metadata.get('total_chunks', 0)
+            output.append(f"=== Chunk {chunk_idx + 1}/{total} ===")
+        output.append(f"Matches: {score}")
+        output.append("")
+        output.append("Full content:")
+        output.append(chunk.text)
+        output.append("")
+
+    return "\n".join(output)
 
 
 @app.tool()
@@ -149,7 +319,7 @@ async def search_within_kanun(
     ),
     keyword: str = Field(
         ...,
-        description='Search query supporting advanced operators: simple keyword ("yatırımcı"), exact phrase ("mali sıkıntı"), AND/OR/NOT operators (yatırımcı AND tazmin, yatırımcı OR müşteri, yatırımcı NOT kurum). Operators must be uppercase.'
+        description='Search query. For keyword mode: supports AND/OR/NOT operators (uppercase). For semantic mode: use natural language.'
     ),
     mevzuat_tertip: str = Field(
         "5",
@@ -157,76 +327,57 @@ async def search_within_kanun(
     ),
     case_sensitive: bool = Field(
         False,
-        description="Whether to match case when searching (default: False)"
+        description="Whether to match case when searching (default: False). Only used in keyword mode."
     ),
     max_results: int = Field(
         25,
         ge=1,
         le=50,
         description="Maximum number of matching articles to return (1-50, default: 25)"
+    ),
+    semantic: bool = Field(
+        False,
+        description="True: semantic search (natural language query, requires OPENROUTER_API_KEY). False: keyword search (Boolean operators AND/OR/NOT)."
     )
 ) -> str:
     """
-    Search for a keyword within a specific legislation's articles with advanced query operators.
+    Search within a specific law's articles using keyword or semantic search.
 
-    This tool is optimized for large legislation (e.g., Sermaye Piyasası Kanunu with 142 articles).
-    Instead of loading the entire legislation into context, it:
-    1. Fetches the full content
-    2. Splits it into individual articles (madde)
-    3. Returns only the articles that match the search query
-    4. Sorts results by relevance score (based on match count)
+    Modes:
+    - semantic=False (default): Keyword search with Boolean operators (AND/OR/NOT, uppercase required)
+    - semantic=True: Natural language semantic search using AI embeddings (requires OPENROUTER_API_KEY)
 
-    Query Syntax (operators must be uppercase):
-    - Simple keyword: yatırımcı
-    - Exact phrase: "mali sıkıntı"
-    - AND operator: yatırımcı AND tazmin (both terms must be present)
-    - OR operator: yatırımcı OR müşteri (at least one term must be present)
-    - NOT operator: yatırımcı NOT kurum (first term present, second must not be)
-    - Combinations: "mali sıkıntı" AND yatırımcı NOT kurum
-
-    Returns formatted text with:
-    - Article number and title
-    - Relevance score (higher = more matches)
-    - Full article content for matching articles
-
-    Example use cases:
-    - Search for "yatırımcı" in Kanun 6362 (Capital Markets Law)
-    - Search for "ceza AND temyiz" in Kanun 5237 (Turkish Penal Code)
-    - Search for "vergi OR ücret" in tax-related legislation
-    - Search for '"iş kazası" AND işveren NOT işçi' for specific labor law articles
+    Keyword examples: "yatırımcı AND tazmin", '"mali sıkıntı"', "vergi OR ücret"
+    Semantic examples: "yatırımcının zararının tazmini", "sermaye piyasası düzenlemeleri"
     """
-    logger.info(f"Tool 'search_within_kanun' called: {mevzuat_no}, keyword: '{keyword}'")
+    logger.info(f"Tool 'search_within_kanun' called: {mevzuat_no}, keyword: '{keyword}', semantic: {semantic}")
 
     try:
-        # Get full content
-        content_result = await mevzuat_client.get_content(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=1,  # Kanun
-            mevzuat_tertip=mevzuat_tertip
-        )
+        if semantic:
+            if not SEMANTIC_SEARCH_AVAILABLE:
+                return "Error: Semantic search requires OPENROUTER_API_KEY environment variable."
+            return await _semantic_search_within(
+                mevzuat_no=mevzuat_no, query=keyword, mevzuat_tur=1,
+                mevzuat_tertip=mevzuat_tertip, max_results=max_results
+            )
 
+        # Keyword search
+        content_result = await mevzuat_client.get_content(
+            mevzuat_no=mevzuat_no, mevzuat_tur=1, mevzuat_tertip=mevzuat_tertip
+        )
         if content_result.error_message:
             return f"Error fetching legislation content: {content_result.error_message}"
 
-        # Search within articles
         matches = search_articles_by_keyword(
             markdown_content=content_result.markdown_content,
-            keyword=keyword,
-            case_sensitive=case_sensitive,
-            max_results=max_results
+            keyword=keyword, case_sensitive=case_sensitive, max_results=max_results
         )
-
         result = ArticleSearchResult(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=1,
-            keyword=keyword,
-            total_matches=len(matches),
-            matching_articles=matches
+            mevzuat_no=mevzuat_no, mevzuat_tur=1, keyword=keyword,
+            total_matches=len(matches), matching_articles=matches
         )
-
         if len(matches) == 0:
             return f"No articles found containing '{keyword}' in Kanun {mevzuat_no}"
-
         return format_search_results(result)
 
     except Exception as e:
@@ -466,7 +617,7 @@ async def search_within_cbk(
     ),
     keyword: str = Field(
         ...,
-        description='Search query supporting advanced operators: simple keyword ("organize"), exact phrase ("organize suç"), AND/OR/NOT operators (organize AND suç, suç OR ceza, organize NOT terör). Operators must be uppercase.'
+        description='Search query. For keyword mode: supports AND/OR/NOT operators (uppercase). For semantic mode: use natural language.'
     ),
     mevzuat_tertip: str = Field(
         "5",
@@ -474,75 +625,56 @@ async def search_within_cbk(
     ),
     case_sensitive: bool = Field(
         False,
-        description="Whether to match case when searching (default: False)"
+        description="Whether to match case when searching (default: False). Only used in keyword mode."
     ),
     max_results: int = Field(
         25,
         ge=1,
         le=50,
         description="Maximum number of matching articles to return (1-50, default: 25)"
+    ),
+    semantic: bool = Field(
+        False,
+        description="True: semantic search (natural language query, requires OPENROUTER_API_KEY). False: keyword search (Boolean operators AND/OR/NOT)."
     )
 ) -> str:
     """
-    Search for a keyword within a specific Presidential Decree's articles with advanced query operators.
+    Search within a specific Presidential Decree's articles using keyword or semantic search.
 
-    This tool is optimized for large Presidential Decrees.
-    Instead of loading the entire decree into context, it:
-    1. Fetches the full content
-    2. Splits it into individual articles (madde)
-    3. Returns only the articles that match the search query
-    4. Sorts results by relevance score (based on match count)
+    Modes:
+    - semantic=False (default): Keyword search with Boolean operators (AND/OR/NOT, uppercase required)
+    - semantic=True: Natural language semantic search using AI embeddings (requires OPENROUTER_API_KEY)
 
-    Query Syntax (operators must be uppercase):
-    - Simple keyword: organize
-    - Exact phrase: "organize suç"
-    - AND operator: organize AND suç (both terms must be present)
-    - OR operator: organize OR terör (at least one term must be present)
-    - NOT operator: organize NOT terör (first term present, second must not be)
-    - Combinations: "organize suç" AND ceza NOT terör
-
-    Returns formatted text with:
-    - Article number and title
-    - Relevance score (higher = more matches)
-    - Full article content for matching articles
-
-    Example use cases:
-    - Search for "organize" in CBK 1 (Judicial Reform)
-    - Search for "suç AND ceza" in specific decree
-    - Search for "devlet OR kamu" in administrative decrees
+    Keyword examples: "organize AND suç", '"organize suç"', "devlet OR kamu"
+    Semantic examples: "organize suç örgütleri ile mücadele", "bakanlık teşkilat yapısı"
     """
-    logger.info(f"Tool 'search_within_cbk' called: {mevzuat_no}, keyword: '{keyword}'")
+    logger.info(f"Tool 'search_within_cbk' called: {mevzuat_no}, keyword: '{keyword}', semantic: {semantic}")
 
     try:
-        # Get full content
-        content_result = await mevzuat_client.get_content(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=19,  # Cumhurbaşkanlığı Kararnamesi
-            mevzuat_tertip=mevzuat_tertip
-        )
+        if semantic:
+            if not SEMANTIC_SEARCH_AVAILABLE:
+                return "Error: Semantic search requires OPENROUTER_API_KEY environment variable."
+            return await _semantic_search_within(
+                mevzuat_no=mevzuat_no, query=keyword, mevzuat_tur=19,
+                mevzuat_tertip=mevzuat_tertip, max_results=max_results
+            )
 
+        content_result = await mevzuat_client.get_content(
+            mevzuat_no=mevzuat_no, mevzuat_tur=19, mevzuat_tertip=mevzuat_tertip
+        )
         if content_result.error_message:
             return f"Error fetching decree content: {content_result.error_message}"
 
-        # Search within articles
         matches = search_articles_by_keyword(
             markdown_content=content_result.markdown_content,
-            keyword=keyword,
-            case_sensitive=case_sensitive,
-            max_results=max_results
+            keyword=keyword, case_sensitive=case_sensitive, max_results=max_results
         )
-
         result = ArticleSearchResult(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=19,
-            keyword=keyword,
-            total_matches=len(matches),
-            matching_articles=matches
+            mevzuat_no=mevzuat_no, mevzuat_tur=19, keyword=keyword,
+            total_matches=len(matches), matching_articles=matches
         )
-
         if len(matches) == 0:
             return f"No articles found containing '{keyword}' in CBK {mevzuat_no}"
-
         return format_search_results(result)
 
     except Exception as e:
@@ -643,7 +775,7 @@ async def search_within_cbyonetmelik(
     ),
     keyword: str = Field(
         ...,
-        description='Search query supporting advanced operators: simple word (yatırımcı), AND (yatırımcı AND tazmin), OR (vergi OR ücret), NOT (yatırımcı NOT kurum), exact phrase with quotes ("mali sıkıntı")'
+        description='Search query. For keyword mode: supports AND/OR/NOT operators (uppercase). For semantic mode: use natural language.'
     ),
     mevzuat_tertip: str = Field(
         "5",
@@ -651,79 +783,59 @@ async def search_within_cbyonetmelik(
     ),
     case_sensitive: bool = Field(
         False,
-        description="Whether to match case (false = case-insensitive, default)"
+        description="Whether to match case (false = case-insensitive, default). Only used in keyword mode."
     ),
     max_results: int = Field(
         25,
         ge=1,
         le=50,
         description="Maximum number of matching articles to return (1-50)"
+    ),
+    semantic: bool = Field(
+        False,
+        description="True: semantic search (natural language query, requires OPENROUTER_API_KEY). False: keyword search (Boolean operators AND/OR/NOT)."
     )
 ) -> str:
     """
-    Search for a keyword within a specific Presidential Regulation's articles with advanced query operators.
+    Search within a specific Presidential Regulation's articles using keyword or semantic search.
 
-    This tool:
-    1. Retrieves the full content of the specified regulation
-    2. Splits it into individual articles (madde)
-    3. Searches within each article using the keyword query
-    4. Returns matching articles sorted by relevance
+    Modes:
+    - semantic=False (default): Keyword search with Boolean operators (AND/OR/NOT, uppercase required)
+    - semantic=True: Natural language semantic search using AI embeddings (requires OPENROUTER_API_KEY)
 
-    Query syntax (operators must be uppercase):
-    - Simple keyword: "yatırımcı"
-    - Exact phrase: "mali sıkıntı"
-    - AND operator: yatırımcı AND tazmin (both must be present)
-    - OR operator: yatırımcı OR müşteri (at least one must be present)
-    - NOT operator: yatırımcı NOT kurum (exclude term)
-    - Combinations: "mali sıkıntı" AND yatırımcı NOT kurum
-
-    Returns:
-    - Full text of each matching article
-    - Article number and title
-    - Number of keyword occurrences
-    - Results sorted by relevance (most matches first)
-
-    Example usage:
-    1. First search regulations: search_cbyonetmelik(aranacak_ifade="ihale")
-    2. Then search within: search_within_cbyonetmelik(mevzuat_no="9014", keyword="taşınır mal")
+    Keyword examples: "taşınır AND mal", '"ihale kanunu"', "kamu OR devlet"
+    Semantic examples: "taşınır mal yönetimi ve zimmet işlemleri", "kamu ihale süreçleri"
     """
-    logger.info(f"Tool 'search_within_cbyonetmelik' called: regulation {mevzuat_no}, keyword: {keyword}")
+    logger.info(f"Tool 'search_within_cbyonetmelik' called: {mevzuat_no}, keyword: '{keyword}', semantic: {semantic}")
 
     try:
-        # Get full regulation content
+        if semantic:
+            if not SEMANTIC_SEARCH_AVAILABLE:
+                return "Error: Semantic search requires OPENROUTER_API_KEY environment variable."
+            return await _semantic_search_within(
+                mevzuat_no=mevzuat_no, query=keyword, mevzuat_tur=21,
+                mevzuat_tertip=mevzuat_tertip, max_results=max_results
+            )
+
         content_result = await mevzuat_client.get_content(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=21,  # CB Yönetmeliği
-            mevzuat_tertip=mevzuat_tertip
+            mevzuat_no=mevzuat_no, mevzuat_tur=21, mevzuat_tertip=mevzuat_tertip
         )
-
         if content_result.error_message:
-            logger.warning(f"Error fetching regulation content: {content_result.error_message}")
             return f"Error: {content_result.error_message}"
-
         if not content_result.markdown_content:
             return f"Error: No content found for regulation {mevzuat_no}"
 
-        # Search within articles
         matches = search_articles_by_keyword(
             markdown_content=content_result.markdown_content,
-            keyword=keyword,
-            case_sensitive=case_sensitive,
-            max_results=max_results
+            keyword=keyword, case_sensitive=case_sensitive, max_results=max_results
         )
-
         if not matches:
             return f"No articles found matching '{keyword}' in regulation {mevzuat_no}"
 
-        # Format and return results
         result = ArticleSearchResult(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=21,
-            keyword=keyword,
-            total_matches=len(matches),
-            matching_articles=matches
+            mevzuat_no=mevzuat_no, mevzuat_tur=21, keyword=keyword,
+            total_matches=len(matches), matching_articles=matches
         )
-
         return format_search_results(result)
 
     except Exception as e:
@@ -1106,7 +1218,7 @@ async def search_within_khk(
     ),
     keyword: str = Field(
         ...,
-        description='Search query supporting advanced operators: simple keyword ("değişiklik"), exact phrase ("kanun hükmünde"), AND/OR/NOT operators (kanun AND değişiklik, madde OR fıkra, değişiklik NOT yürürlük). Operators must be uppercase.'
+        description='Search query. For keyword mode: supports AND/OR/NOT operators (uppercase). For semantic mode: use natural language.'
     ),
     mevzuat_tertip: str = Field(
         "5",
@@ -1114,75 +1226,56 @@ async def search_within_khk(
     ),
     case_sensitive: bool = Field(
         False,
-        description="Whether to match case when searching (default: False)"
+        description="Whether to match case when searching (default: False). Only used in keyword mode."
     ),
     max_results: int = Field(
         25,
         ge=1,
         le=50,
         description="Maximum number of matching articles to return (1-50, default: 25)"
+    ),
+    semantic: bool = Field(
+        False,
+        description="True: semantic search (natural language query, requires OPENROUTER_API_KEY). False: keyword search (Boolean operators AND/OR/NOT)."
     )
 ) -> str:
     """
-    Search for a keyword within a specific Decree Law's (KHK) articles with advanced query operators.
+    Search within a specific Decree Law's (KHK) articles using keyword or semantic search.
 
-    This tool is optimized for large KHKs.
-    Instead of loading the entire decree law into context, it:
-    1. Fetches the full content
-    2. Splits it into individual articles (madde)
-    3. Returns only the articles that match the search query
-    4. Sorts results by relevance score (based on match count)
+    Modes:
+    - semantic=False (default): Keyword search with Boolean operators (AND/OR/NOT, uppercase required)
+    - semantic=True: Natural language semantic search using AI embeddings (requires OPENROUTER_API_KEY)
 
-    Query Syntax (operators must be uppercase):
-    - Simple keyword: değişiklik
-    - Exact phrase: "kanun hükmünde"
-    - AND operator: kanun AND değişiklik (both terms must be present)
-    - OR operator: madde OR fıkra (at least one term must be present)
-    - NOT operator: değişiklik NOT yürürlük (first term present, second must not be)
-    - Combinations: "kanun hükmünde" AND değişiklik NOT yürürlük
-
-    Returns formatted text with:
-    - Article number and title
-    - Relevance score (higher = more matches)
-    - Full article content for matching articles
-
-    Example use cases:
-    - Search for "anayasa" in KHK 703 (Constitutional amendments)
-    - Search for "sağlık AND düzenleme" in KHK 663 (Health regulations)
-    - Search for "bakanlık OR kurum" in organizational KHKs
+    Keyword examples: "kanun AND değişiklik", '"kanun hükmünde"', "bakanlık OR kurum"
+    Semantic examples: "sağlık alanında yapılan düzenlemeler", "anayasa değişikliği"
     """
-    logger.info(f"Tool 'search_within_khk' called: {mevzuat_no}, keyword: '{keyword}'")
+    logger.info(f"Tool 'search_within_khk' called: {mevzuat_no}, keyword: '{keyword}', semantic: {semantic}")
 
     try:
-        # Get full content
-        content_result = await mevzuat_client.get_content(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=4,  # KHK
-            mevzuat_tertip=mevzuat_tertip
-        )
+        if semantic:
+            if not SEMANTIC_SEARCH_AVAILABLE:
+                return "Error: Semantic search requires OPENROUTER_API_KEY environment variable."
+            return await _semantic_search_within(
+                mevzuat_no=mevzuat_no, query=keyword, mevzuat_tur=4,
+                mevzuat_tertip=mevzuat_tertip, max_results=max_results
+            )
 
+        content_result = await mevzuat_client.get_content(
+            mevzuat_no=mevzuat_no, mevzuat_tur=4, mevzuat_tertip=mevzuat_tertip
+        )
         if content_result.error_message:
             return f"Error fetching KHK content: {content_result.error_message}"
 
-        # Search within articles
         matches = search_articles_by_keyword(
             markdown_content=content_result.markdown_content,
-            keyword=keyword,
-            case_sensitive=case_sensitive,
-            max_results=max_results
+            keyword=keyword, case_sensitive=case_sensitive, max_results=max_results
         )
-
         result = ArticleSearchResult(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=4,
-            keyword=keyword,
-            total_matches=len(matches),
-            matching_articles=matches
+            mevzuat_no=mevzuat_no, mevzuat_tur=4, keyword=keyword,
+            total_matches=len(matches), matching_articles=matches
         )
-
         if len(matches) == 0:
             return f"No articles found containing '{keyword}' in KHK {mevzuat_no}"
-
         return format_search_results(result)
 
     except Exception as e:
@@ -1285,7 +1378,7 @@ async def search_within_tuzuk(
     ),
     keyword: str = Field(
         ...,
-        description='Search query supporting advanced operators: simple keyword ("kayıt"), exact phrase ("sicil kayıt"), AND/OR/NOT operators (tapu AND sicil, tescil OR ilan, kayıt NOT iptal). Operators must be uppercase.'
+        description='Search query. For keyword mode: supports AND/OR/NOT operators (uppercase). For semantic mode: use natural language.'
     ),
     mevzuat_tertip: str = Field(
         "5",
@@ -1293,75 +1386,56 @@ async def search_within_tuzuk(
     ),
     case_sensitive: bool = Field(
         False,
-        description="Whether to match case when searching (default: False)"
+        description="Whether to match case when searching (default: False). Only used in keyword mode."
     ),
     max_results: int = Field(
         25,
         ge=1,
         le=50,
         description="Maximum number of matching articles to return (1-50, default: 25)"
+    ),
+    semantic: bool = Field(
+        False,
+        description="True: semantic search (natural language query, requires OPENROUTER_API_KEY). False: keyword search (Boolean operators AND/OR/NOT)."
     )
 ) -> str:
     """
-    Search for a keyword within a specific Statute's (Tüzük) articles with advanced query operators.
+    Search within a specific Statute's (Tüzük) articles using keyword or semantic search.
 
-    This tool is optimized for large statutes.
-    Instead of loading the entire statute into context, it:
-    1. Fetches the full content
-    2. Splits it into individual articles (madde)
-    3. Returns only the articles that match the search query
-    4. Sorts results by relevance score (based on match count)
+    Modes:
+    - semantic=False (default): Keyword search with Boolean operators (AND/OR/NOT, uppercase required)
+    - semantic=True: Natural language semantic search using AI embeddings (requires OPENROUTER_API_KEY)
 
-    Query Syntax (operators must be uppercase):
-    - Simple keyword: kayıt
-    - Exact phrase: "sicil kayıt"
-    - AND operator: tapu AND sicil (both terms must be present)
-    - OR operator: tescil OR ilan (at least one term must be present)
-    - NOT operator: kayıt NOT iptal (first term present, second must not be)
-    - Combinations: "sicil kayıt" AND tapu NOT iptal
-
-    Returns formatted text with:
-    - Article number and title
-    - Relevance score (higher = more matches)
-    - Full article content for matching articles
-
-    Example use cases:
-    - Search for "tapu" in Tapu Sicili Tüzüğü (20135150)
-    - Search for "tescil AND ilan" in Vakıflar Tüzüğü (20134513)
-    - Search for "kayıt OR sicil" in cadastral statutes
+    Keyword examples: "tapu AND sicil", '"sicil kayıt"', "tescil OR ilan"
+    Semantic examples: "tapu sicil kayıt işlemleri", "vakıf tescil süreci"
     """
-    logger.info(f"Tool 'search_within_tuzuk' called: {mevzuat_no}, keyword: '{keyword}'")
+    logger.info(f"Tool 'search_within_tuzuk' called: {mevzuat_no}, keyword: '{keyword}', semantic: {semantic}")
 
     try:
-        # Get full content
-        content_result = await mevzuat_client.get_content(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=2,  # Tüzük
-            mevzuat_tertip=mevzuat_tertip
-        )
+        if semantic:
+            if not SEMANTIC_SEARCH_AVAILABLE:
+                return "Error: Semantic search requires OPENROUTER_API_KEY environment variable."
+            return await _semantic_search_within(
+                mevzuat_no=mevzuat_no, query=keyword, mevzuat_tur=2,
+                mevzuat_tertip=mevzuat_tertip, max_results=max_results
+            )
 
+        content_result = await mevzuat_client.get_content(
+            mevzuat_no=mevzuat_no, mevzuat_tur=2, mevzuat_tertip=mevzuat_tertip
+        )
         if content_result.error_message:
             return f"Error fetching statute content: {content_result.error_message}"
 
-        # Search within articles
         matches = search_articles_by_keyword(
             markdown_content=content_result.markdown_content,
-            keyword=keyword,
-            case_sensitive=case_sensitive,
-            max_results=max_results
+            keyword=keyword, case_sensitive=case_sensitive, max_results=max_results
         )
-
         result = ArticleSearchResult(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=2,
-            keyword=keyword,
-            total_matches=len(matches),
-            matching_articles=matches
+            mevzuat_no=mevzuat_no, mevzuat_tur=2, keyword=keyword,
+            total_matches=len(matches), matching_articles=matches
         )
-
         if len(matches) == 0:
             return f"No articles found containing '{keyword}' in Tüzük {mevzuat_no}"
-
         return format_search_results(result)
 
     except Exception as e:
@@ -1468,7 +1542,7 @@ async def search_within_kurum_yonetmelik(
     ),
     keyword: str = Field(
         ...,
-        description='Search query supporting advanced operators: simple keyword ("kontrol"), exact phrase ("ihracat kontrol"), AND/OR/NOT operators (nükleer AND ihracat, denetim OR teftiş, kontrol NOT iptal). Operators must be uppercase.'
+        description='Search query. For keyword mode: supports AND/OR/NOT operators (uppercase). For semantic mode: use natural language.'
     ),
     mevzuat_tertip: str = Field(
         "5",
@@ -1476,80 +1550,301 @@ async def search_within_kurum_yonetmelik(
     ),
     case_sensitive: bool = Field(
         False,
-        description="Whether to match case when searching (default: False)"
+        description="Whether to match case when searching (default: False). Only used in keyword mode."
     ),
     max_results: int = Field(
         25,
         ge=1,
         le=50,
         description="Maximum number of matching articles to return (1-50, default: 25)"
+    ),
+    semantic: bool = Field(
+        False,
+        description="True: semantic search (natural language query, requires OPENROUTER_API_KEY). False: keyword search (Boolean operators AND/OR/NOT)."
     )
 ) -> str:
     """
-    Search for a keyword within a specific Institutional Regulation's articles with advanced query operators.
+    Search within a specific Institutional Regulation's articles using keyword or semantic search.
 
-    This tool is optimized for large regulations.
-    Instead of loading the entire regulation into context, it:
-    1. Fetches the full content
-    2. Splits it into individual articles (madde)
-    3. Returns only the articles that match the search query
-    4. Sorts results by relevance score (based on match count)
+    Modes:
+    - semantic=False (default): Keyword search with Boolean operators (AND/OR/NOT, uppercase required)
+    - semantic=True: Natural language semantic search using AI embeddings (requires OPENROUTER_API_KEY)
 
-    Query Syntax (operators must be uppercase):
-    - Simple keyword: kontrol
-    - Exact phrase: "ihracat kontrol"
-    - AND operator: nükleer AND ihracat (both terms must be present)
-    - OR operator: denetim OR teftiş (at least one term must be present)
-    - NOT operator: kontrol NOT iptal (first term present, second must not be)
-    - Combinations: "ihracat kontrol" AND nükleer NOT silah
-
-    Returns formatted text with:
-    - Article number and title
-    - Relevance score (higher = more matches)
-    - Full article content for matching articles
-
-    Example use cases:
-    - Search for "nükleer" in Nuclear Export Regulation (42641)
-    - Search for "disiplin AND ceza" in disciplinary regulations
-    - Search for "görev OR yetki" in organizational regulations
+    Keyword examples: "nükleer AND ihracat", '"ihracat kontrol"', "denetim OR teftiş"
+    Semantic examples: "nükleer madde ihracat kontrol düzenlemeleri", "disiplin cezaları"
     """
-    logger.info(f"Tool 'search_within_kurum_yonetmelik' called: {mevzuat_no}, keyword: '{keyword}'")
+    logger.info(f"Tool 'search_within_kurum_yonetmelik' called: {mevzuat_no}, keyword: '{keyword}', semantic: {semantic}")
 
     try:
-        # Get full content
-        content_result = await mevzuat_client.get_content(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=7,  # Kurum Yönetmeliği
-            mevzuat_tertip=mevzuat_tertip
-        )
+        if semantic:
+            if not SEMANTIC_SEARCH_AVAILABLE:
+                return "Error: Semantic search requires OPENROUTER_API_KEY environment variable."
+            return await _semantic_search_within(
+                mevzuat_no=mevzuat_no, query=keyword, mevzuat_tur=7,
+                mevzuat_tertip=mevzuat_tertip, max_results=max_results
+            )
 
+        content_result = await mevzuat_client.get_content(
+            mevzuat_no=mevzuat_no, mevzuat_tur=7, mevzuat_tertip=mevzuat_tertip
+        )
         if content_result.error_message:
             return f"Error fetching regulation content: {content_result.error_message}"
 
-        # Search within articles
         matches = search_articles_by_keyword(
             markdown_content=content_result.markdown_content,
-            keyword=keyword,
-            case_sensitive=case_sensitive,
-            max_results=max_results
+            keyword=keyword, case_sensitive=case_sensitive, max_results=max_results
         )
-
         result = ArticleSearchResult(
-            mevzuat_no=mevzuat_no,
-            mevzuat_tur=7,
-            keyword=keyword,
-            total_matches=len(matches),
-            matching_articles=matches
+            mevzuat_no=mevzuat_no, mevzuat_tur=7, keyword=keyword,
+            total_matches=len(matches), matching_articles=matches
         )
-
         if len(matches) == 0:
             return f"No articles found containing '{keyword}' in Kurum Yönetmeliği {mevzuat_no}"
-
         return format_search_results(result)
 
     except Exception as e:
         logger.exception(f"Error in tool 'search_within_kurum_yonetmelik' for {mevzuat_no}")
         return f"An unexpected error occurred while searching Kurum Yönetmeliği {mevzuat_no}: {str(e)}"
+
+
+# ============================================================================
+# New search_within tools (Tebliğ, CB Kararı, CB Genelgesi)
+# ============================================================================
+
+@app.tool()
+async def search_within_teblig(
+    mevzuat_no: str = Field(
+        ...,
+        description="The communiqué number to search within (e.g., '42331')"
+    ),
+    keyword: str = Field(
+        ...,
+        description='Search query. For keyword mode: supports AND/OR/NOT operators (uppercase). For semantic mode: use natural language.'
+    ),
+    mevzuat_tertip: str = Field(
+        "5",
+        description="Communiqué series from search results (e.g., '5')"
+    ),
+    case_sensitive: bool = Field(
+        False,
+        description="Whether to match case when searching (default: False). Only used in keyword mode."
+    ),
+    max_results: int = Field(
+        25,
+        ge=1,
+        le=50,
+        description="Maximum number of matching segments to return (1-50, default: 25)"
+    ),
+    semantic: bool = Field(
+        False,
+        description="True: semantic search (natural language query, requires OPENROUTER_API_KEY). False: keyword search (Boolean operators AND/OR/NOT)."
+    )
+) -> str:
+    """
+    Search within a specific communiqué's (Tebliğ) content using keyword or semantic search.
+
+    Tries article-based splitting first; if no articles found, falls back to chunk-based search.
+
+    Modes:
+    - semantic=False (default): Keyword search with Boolean operators (AND/OR/NOT, uppercase required)
+    - semantic=True: Natural language semantic search using AI embeddings (requires OPENROUTER_API_KEY)
+
+    Keyword examples: "vergi AND muafiyet", '"katma değer"', "istisna OR muafiyet"
+    Semantic examples: "vergi muafiyeti koşulları", "KDV iade işlemleri"
+    """
+    logger.info(f"Tool 'search_within_teblig' called: {mevzuat_no}, keyword: '{keyword}', semantic: {semantic}")
+
+    try:
+        if semantic:
+            if not SEMANTIC_SEARCH_AVAILABLE:
+                return "Error: Semantic search requires OPENROUTER_API_KEY environment variable."
+            return await _semantic_search_within(
+                mevzuat_no=mevzuat_no, query=keyword, mevzuat_tur=9,
+                mevzuat_tertip=mevzuat_tertip, max_results=max_results
+            )
+
+        # Keyword search
+        content_result = await mevzuat_client.get_content(
+            mevzuat_no=mevzuat_no, mevzuat_tur=9, mevzuat_tertip=mevzuat_tertip
+        )
+        if content_result.error_message:
+            return f"Error fetching communiqué content: {content_result.error_message}"
+        if not content_result.markdown_content:
+            return f"Error: No content found for Tebliğ {mevzuat_no}"
+
+        # Try article-based search first
+        matches = search_articles_by_keyword(
+            markdown_content=content_result.markdown_content,
+            keyword=keyword, case_sensitive=case_sensitive, max_results=max_results
+        )
+        if matches:
+            result = ArticleSearchResult(
+                mevzuat_no=mevzuat_no, mevzuat_tur=9, keyword=keyword,
+                total_matches=len(matches), matching_articles=matches
+            )
+            return format_search_results(result)
+
+        # Fallback to chunk-based keyword search
+        return await _keyword_search_chunks(
+            content=content_result.markdown_content, keyword=keyword,
+            mevzuat_no=mevzuat_no, mevzuat_tur=9,
+            case_sensitive=case_sensitive, max_results=max_results
+        )
+
+    except Exception as e:
+        logger.exception(f"Error in tool 'search_within_teblig' for {mevzuat_no}")
+        return f"An unexpected error occurred: {str(e)}"
+
+
+@app.tool()
+async def search_within_cbbaskankarar(
+    mevzuat_no: str = Field(
+        ...,
+        description="The Presidential Decision number to search within (e.g., '1733', '10452')"
+    ),
+    keyword: str = Field(
+        ...,
+        description='Search query. For keyword mode: supports AND/OR/NOT operators (uppercase). For semantic mode: use natural language.'
+    ),
+    mevzuat_tertip: str = Field(
+        "5",
+        description="Decision series from search results (e.g., '5')"
+    ),
+    case_sensitive: bool = Field(
+        False,
+        description="Whether to match case when searching (default: False). Only used in keyword mode."
+    ),
+    max_results: int = Field(
+        25,
+        ge=1,
+        le=50,
+        description="Maximum number of matching segments to return (1-50, default: 25)"
+    ),
+    semantic: bool = Field(
+        False,
+        description="True: semantic search (natural language query, requires OPENROUTER_API_KEY). False: keyword search (Boolean operators AND/OR/NOT)."
+    )
+) -> str:
+    """
+    Search within a specific Presidential Decision's (CB Kararı) content using keyword or semantic search.
+
+    Presidential Decisions are PDF-based and use chunk-based splitting (no article structure).
+
+    Modes:
+    - semantic=False (default): Keyword search with Boolean operators (AND/OR/NOT, uppercase required)
+    - semantic=True: Natural language semantic search using AI embeddings (requires OPENROUTER_API_KEY)
+
+    Keyword examples: "atama AND görev", '"ihracat rejimi"', "vergi OR gümrük"
+    Semantic examples: "kamu personeli atama kararları", "ihracat rejimi düzenlemeleri"
+    """
+    logger.info(f"Tool 'search_within_cbbaskankarar' called: {mevzuat_no}, keyword: '{keyword}', semantic: {semantic}")
+
+    try:
+        if semantic:
+            if not SEMANTIC_SEARCH_AVAILABLE:
+                return "Error: Semantic search requires OPENROUTER_API_KEY environment variable."
+            return await _semantic_search_within(
+                mevzuat_no=mevzuat_no, query=keyword, mevzuat_tur=20,
+                mevzuat_tertip=mevzuat_tertip, max_results=max_results
+            )
+
+        # Keyword search (chunk-based)
+        content_result = await mevzuat_client.get_content(
+            mevzuat_no=mevzuat_no, mevzuat_tur=20, mevzuat_tertip=mevzuat_tertip
+        )
+        if content_result.error_message:
+            return f"Error fetching decision content: {content_result.error_message}"
+        if not content_result.markdown_content:
+            return f"Error: No content found for CB Kararı {mevzuat_no}"
+
+        return await _keyword_search_chunks(
+            content=content_result.markdown_content, keyword=keyword,
+            mevzuat_no=mevzuat_no, mevzuat_tur=20,
+            case_sensitive=case_sensitive, max_results=max_results
+        )
+
+    except Exception as e:
+        logger.exception(f"Error in tool 'search_within_cbbaskankarar' for {mevzuat_no}")
+        return f"An unexpected error occurred: {str(e)}"
+
+
+@app.tool()
+async def search_within_cbgenelge(
+    mevzuat_no: str = Field(
+        ...,
+        description="The Presidential Circular number to search within (e.g., '16', '15')"
+    ),
+    keyword: str = Field(
+        ...,
+        description='Search query. For keyword mode: supports AND/OR/NOT operators (uppercase). For semantic mode: use natural language.'
+    ),
+    resmi_gazete_tarihi: str = Field(
+        ...,
+        description="Official Gazette date from search results in DD/MM/YYYY format (e.g., '20/09/2025') - REQUIRED for PDF retrieval"
+    ),
+    mevzuat_tertip: str = Field(
+        "5",
+        description="Circular series from search results (e.g., '5')"
+    ),
+    case_sensitive: bool = Field(
+        False,
+        description="Whether to match case when searching (default: False). Only used in keyword mode."
+    ),
+    max_results: int = Field(
+        25,
+        ge=1,
+        le=50,
+        description="Maximum number of matching segments to return (1-50, default: 25)"
+    ),
+    semantic: bool = Field(
+        False,
+        description="True: semantic search (natural language query, requires OPENROUTER_API_KEY). False: keyword search (Boolean operators AND/OR/NOT)."
+    )
+) -> str:
+    """
+    Search within a specific Presidential Circular's (CB Genelgesi) content using keyword or semantic search.
+
+    Presidential Circulars are PDF-based and use chunk-based splitting (no article structure).
+    IMPORTANT: resmi_gazete_tarihi is required (from search_cbgenelge results).
+
+    Modes:
+    - semantic=False (default): Keyword search with Boolean operators (AND/OR/NOT, uppercase required)
+    - semantic=True: Natural language semantic search using AI embeddings (requires OPENROUTER_API_KEY)
+
+    Keyword examples: "koordinasyon AND toplantı", '"kamu yönetimi"'
+    Semantic examples: "bakanlıklar arası koordinasyon düzeni", "tasarruf tedbirleri"
+    """
+    logger.info(f"Tool 'search_within_cbgenelge' called: {mevzuat_no}, keyword: '{keyword}', semantic: {semantic}")
+
+    try:
+        if semantic:
+            if not SEMANTIC_SEARCH_AVAILABLE:
+                return "Error: Semantic search requires OPENROUTER_API_KEY environment variable."
+            return await _semantic_search_within(
+                mevzuat_no=mevzuat_no, query=keyword, mevzuat_tur=22,
+                mevzuat_tertip=mevzuat_tertip, max_results=max_results,
+                resmi_gazete_tarihi=resmi_gazete_tarihi
+            )
+
+        # Keyword search (chunk-based)
+        content_result = await mevzuat_client.get_content(
+            mevzuat_no=mevzuat_no, mevzuat_tur=22, mevzuat_tertip=mevzuat_tertip,
+            resmi_gazete_tarihi=resmi_gazete_tarihi
+        )
+        if content_result.error_message:
+            return f"Error fetching circular content: {content_result.error_message}"
+        if not content_result.markdown_content:
+            return f"Error: No content found for CB Genelgesi {mevzuat_no}"
+
+        return await _keyword_search_chunks(
+            content=content_result.markdown_content, keyword=keyword,
+            mevzuat_no=mevzuat_no, mevzuat_tur=22,
+            case_sensitive=case_sensitive, max_results=max_results
+        )
+
+    except Exception as e:
+        logger.exception(f"Error in tool 'search_within_cbgenelge' for {mevzuat_no}")
+        return f"An unexpected error occurred: {str(e)}"
 
 
 def main():
