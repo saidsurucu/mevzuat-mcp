@@ -1904,19 +1904,25 @@ async def search_mevzuat(
             "Full-text search in document content (Solr/Lucene syntax). "
             "Searches inside the legislation text, not just the title. "
             "Leave empty to browse/list or use mevzuat_adi for title search. "
-            "Solr operators: \"exact phrase\", +required -prohibited, wildcard*, fuzzy~, \"proximity search\"~N, boost^N. "
-            "NOTE: AND/OR/NOT do NOT work here - use +term1 +term2 instead of term1 AND term2. "
-            "Examples: 'ticaret', '\"katma değer vergisi\"' (exact), '+yatırımcı +tazmin' (both required), "
-            "'yatırımcı -kurum' (exclude), 'yatırım*' (wildcard), 'yatırımcı~' (fuzzy), "
-            "'\"yatırımcı tazmin\"~5' (proximity within 5 words)"
+            "Solr operators: \"exact phrase\", +required -prohibited, wildcard*, single?, fuzzy~, fuzzy~N, \"proximity\"~N, boost^N. "
+            "NOTE: AND/OR/NOT do NOT work here - use +term1 +term2 instead of term1 AND term2, "
+            "use -term instead of NOT term, use 'term1 term2' (space) instead of term1 OR term2. "
+            "Examples: 'ticaret' (simple), '\"katma değer vergisi\"' (exact phrase), "
+            "'+yatırımcı +tazmin' (both required), 'yatırımcı -kurum' (exclude), "
+            "'yatırım*' (wildcard), '*ımcı' (leading wildcard), 'yatırımc?' (single char wildcard), "
+            "'yatırımcı~' (fuzzy), 'yatırımcı~2' (fuzzy with distance), "
+            "'\"yatırımcı tazmin\"~5' (proximity within 5 words), 'yatırımcı^2 tazmin' (boost first term)"
         ),
     ),
     mevzuat_adi: str = Field(
         "",
         description=(
             "Title/keyword search (Aranacak Kavram). Searches in legislation title/name. "
-            "Use Turkish keywords, not law numbers. "
-            "Examples: 'ticaret kanunu', 'ceza', 'gümrük', 'sermaye piyasası', 'gelir vergisi'. "
+            "Use Turkish keywords, not law numbers. Multiple words are AND-matched (all must appear in title). "
+            "Supports only: simple keywords, trailing wildcard (ticar*), single char wildcard (ticare?). "
+            "For exact phrase match use tamCumle=True instead of quotes. "
+            "Do NOT use quotes, +, -, ~, ^, or other Solr operators here (they break the search). "
+            "Examples: 'ticaret kanunu', 'ceza', 'gümrük', 'sermaye piyasası', 'gelir vergisi', 'ticar*'. "
             "Can be used alone or together with phrase for combined filtering."
         ),
     ),
