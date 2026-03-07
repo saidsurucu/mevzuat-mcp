@@ -1904,7 +1904,11 @@ async def search_mevzuat(
             "Full-text search in document content (Solr/Lucene syntax). "
             "Searches inside the legislation text, not just the title. "
             "Leave empty to browse/list or use mevzuat_adi for title search. "
-            "Examples: 'ticaret', '\"katma değer vergisi\"', 'yatırımcı'"
+            "Solr operators: \"exact phrase\", +required -prohibited, wildcard*, fuzzy~, \"proximity search\"~N, boost^N. "
+            "NOTE: AND/OR/NOT do NOT work here - use +term1 +term2 instead of term1 AND term2. "
+            "Examples: 'ticaret', '\"katma değer vergisi\"' (exact), '+yatırımcı +tazmin' (both required), "
+            "'yatırımcı -kurum' (exclude), 'yatırım*' (wildcard), 'yatırımcı~' (fuzzy), "
+            "'\"yatırımcı tazmin\"~5' (proximity within 5 words)"
         ),
     ),
     mevzuat_adi: str = Field(
