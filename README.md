@@ -11,20 +11,32 @@ Bu proje, Adalet Bakanlığı'na ait Mevzuat Bilgi Sistemi'ne (`mevzuat.gov.tr`)
 🎯 **Temel Özellikler**
 
 * Adalet Bakanlığı Mevzuat Bilgi Sistemi'ne programatik erişim için standart bir MCP arayüzü.
-* 21 farklı tool ile kapsamlı mevzuat erişimi:
-    * **Kanun (Laws)** - Türkiye Cumhuriyeti kanunları
-    * **KHK (Decree Laws)** - Kanun Hükmünde Kararnameler
-    * **Tüzük (Statutes)** - Tüzükler
-    * **Kurum Yönetmeliği (Institutional Regulations)** - Kurum ve kuruluş yönetmelikleri
-    * **Cumhurbaşkanlığı Kararnamesi (Presidential Decrees)** - Cumhurbaşkanlığı kararnameleri
-    * **Cumhurbaşkanı Kararı (Presidential Decisions)** - Cumhurbaşkanı kararları
-    * **CB Yönetmeliği (Presidential Regulations)** - Cumhurbaşkanlığı ve Bakanlar Kurulu yönetmelikleri
-    * **CB Genelgesi (Presidential Circulars)** - Cumhurbaşkanlığı genelgeleri
-    * **Tebliğ (Communiqués)** - Tebliğler
-* Her mevzuat türü için çift tool yapısı:
+* **26 farklı tool** ile kapsamlı mevzuat erişimi (iki farklı veri kaynağı):
+    * **mevzuat.gov.tr** üzerinden 21 araç (türe özel arama ve içerik)
+    * **bedesten.adalet.gov.tr** üzerinden 5 araç (birleşik arama, gerekçe, içindekiler)
+* Desteklenen 12 mevzuat türü:
+    * **Kanun** - Türkiye Cumhuriyeti kanunları
+    * **KHK** - Kanun Hükmünde Kararnameler
+    * **Tüzük** - Tüzükler
+    * **Kurum Yönetmeliği** - Kurum ve kuruluş yönetmelikleri
+    * **Üniversite Yönetmeliği** - Üniversite yönetmelikleri
+    * **Cumhurbaşkanlığı Kararnamesi** - Cumhurbaşkanlığı kararnameleri
+    * **Cumhurbaşkanı Kararı** - Cumhurbaşkanı kararları
+    * **CB Yönetmeliği** - Cumhurbaşkanlığı ve Bakanlar Kurulu yönetmelikleri
+    * **CB Genelgesi** - Cumhurbaşkanlığı genelgeleri
+    * **Bakanlar Kurulu Yönetmeliği** - Bakanlar Kurulu yönetmelikleri
+    * **Tebliğ** - Tebliğler
+    * **Mülga Mevzuat** - Yürürlükten kaldırılmış mevzuat
+* **mevzuat.gov.tr araçları (21 tool)**: Her mevzuat türü için çift tool yapısı:
     * **Arama tool'u**: Başlık ve içerikte arama, Boolean operatörler (AND, OR, NOT), tarih filtreleme
     * **İçinde arama tool'u**: Madde bazında arama (keyword + semantik), alakalılık skoru ile sıralama
-* **Semantik Arama (Yeni!)**: Tüm 9 `search_within_*` aracında `semantic=True` parametresi ile doğal dilde anlam tabanlı arama. OpenRouter API üzerinden embedding modelleri kullanır.
+* **bedesten.adalet.gov.tr araçları (5 tool)**: Tüm mevzuat türlerini tek araçla kapsar:
+    * **`search_mevzuat`**: 12 türde birleşik arama (başlık, içerik, numara, RG tarihi/sayısı filtreleme)
+    * **`get_mevzuat_content`**: Tam metin getirme
+    * **`search_within_mevzuat`**: Madde bazında anahtar kelime araması
+    * **`get_mevzuat_gerekce`**: Kanun gerekçesi (amaç, komisyon raporları, madde gerekçeleri)
+    * **`get_mevzuat_madde_tree`**: İçindekiler / madde ağacı (bölüm-madde hiyerarşisi)
+* **Semantik Arama**: Tüm 9 `search_within_*` aracında `semantic=True` parametresi ile doğal dilde anlam tabanlı arama. OpenRouter API üzerinden embedding modelleri kullanır.
 * Gelişmiş özellikler:
     * PDF'leri Mistral OCR ile metin çıkarma (CB Kararı ve CB Genelgesi için)
     * HTML'den Markdown'a otomatik dönüştürme
@@ -132,48 +144,52 @@ CB Kararı ve CB Genelgesi gibi PDF tabanlı mevzuatlar için Mistral OCR kullan
 ---
 🛠️ **Kullanılabilir Araçlar (MCP Tools)**
 
-Bu FastMCP sunucusu LLM modelleri için **21 araç** sunar.
+Bu FastMCP sunucusu LLM modelleri için **26 araç** sunar (iki farklı veri kaynağı).
 
-### Kanun (Laws)
+### A. mevzuat.gov.tr Araçları (21 araç)
+
+Türe özel arama ve içerik araçları. Her mevzuat türü için ayrı tool'lar.
+
+#### Kanun (Laws)
 * **`search_kanun`**: Kanun başlık ve içeriklerinde arama yapar
 * **`search_within_kanun`**: Kanun maddelerinde anahtar kelime veya semantik arama yapar
 
-### KHK (Decree Laws)
+#### KHK (Decree Laws)
 * **`search_khk`**: KHK başlık ve içeriklerinde arama yapar
 * **`search_within_khk`**: KHK maddelerinde anahtar kelime veya semantik arama yapar
 
-### Tüzük (Statutes)
+#### Tüzük (Statutes)
 * **`search_tuzuk`**: Tüzük başlık ve içeriklerinde arama yapar
 * **`search_within_tuzuk`**: Tüzük maddelerinde anahtar kelime veya semantik arama yapar
 
-### Kurum Yönetmeliği (Institutional Regulations)
+#### Kurum Yönetmeliği (Institutional Regulations)
 * **`search_kurum_yonetmelik`**: Kurum yönetmeliği başlık ve içeriklerinde arama yapar
 * **`search_within_kurum_yonetmelik`**: Kurum yönetmeliği maddelerinde anahtar kelime veya semantik arama yapar
 
-### Cumhurbaşkanlığı Kararnamesi (Presidential Decrees)
+#### Cumhurbaşkanlığı Kararnamesi (Presidential Decrees)
 * **`search_cbk`**: CB Kararnamesi başlık ve içeriklerinde arama yapar
 * **`search_within_cbk`**: CB Kararnamesi maddelerinde anahtar kelime veya semantik arama yapar
 
-### Cumhurbaşkanı Kararı (Presidential Decisions)
+#### Cumhurbaşkanı Kararı (Presidential Decisions)
 * **`search_cbbaskankarar`**: CB Kararı başlık ve içeriklerinde arama yapar
 * **`get_cbbaskankarar_content`**: CB Kararı tam içeriğini getirir (PDF - OCR destekli)
 * **`search_within_cbbaskankarar`**: CB Kararı içeriğinde anahtar kelime veya semantik arama yapar
 
-### CB Yönetmeliği (Presidential Regulations)
+#### CB Yönetmeliği (Presidential Regulations)
 * **`search_cbyonetmelik`**: CB Yönetmeliği başlık ve içeriklerinde arama yapar
 * **`search_within_cbyonetmelik`**: CB Yönetmeliği maddelerinde anahtar kelime veya semantik arama yapar
 
-### CB Genelgesi (Presidential Circulars)
+#### CB Genelgesi (Presidential Circulars)
 * **`search_cbgenelge`**: CB Genelgesi başlıklarında arama yapar
 * **`get_cbgenelge_content`**: CB Genelgesi tam içeriğini getirir (PDF - OCR destekli)
 * **`search_within_cbgenelge`**: CB Genelgesi içeriğinde anahtar kelime veya semantik arama yapar
 
-### Tebliğ (Communiqués)
+#### Tebliğ (Communiqués)
 * **`search_teblig`**: Tebliğ başlık ve içeriklerinde arama yapar
 * **`get_teblig_content`**: Tebliğ tam içeriğini getirir
 * **`search_within_teblig`**: Tebliğ maddelerinde anahtar kelime veya semantik arama yapar
 
-### Ortak Parametreler
+#### mevzuat.gov.tr Ortak Parametreler
 
 **Arama Tool'ları için:**
 * `aranacak_ifade`: Aranacak kelime veya kelime grupları (AND, OR, NOT operatörleri desteklenir)
@@ -188,6 +204,41 @@ Bu FastMCP sunucusu LLM modelleri için **21 araç** sunar.
 * `case_sensitive`: Büyük/küçük harf duyarlılığı (sadece keyword modunda)
 * `max_results`: Maksimum sonuç sayısı
 
+### B. bedesten.adalet.gov.tr Araçları (5 araç)
+
+Tüm mevzuat türlerini tek araçla kapsayan birleşik araçlar. Gerekçe ve içindekiler gibi ek özellikler sunar.
+
+#### **`search_mevzuat`** - Birleşik Mevzuat Arama
+Tüm 12 mevzuat türünde başlık ve içerik araması yapar.
+* `phrase`: İçerikte tam metin arama (Solr sözdizimi)
+* `mevzuat_adi`: Mevzuat adı/başlığında arama
+* `mevzuat_no`: Mevzuat numarası filtresi
+* `mevzuat_tur`: Mevzuat türü filtresi (KANUN, KHK, TUZUK, YONETMELIK, CB_KARARNAME, CB_KARAR, CB_YONETMELIK, CB_GENELGE, KKY, UY, TEBLIGLER, MULGA)
+* `basliktaAra`: Sadece başlıkta ara (varsayılan: true)
+* `tamCumle`: Tam cümle eşleşmesi (varsayılan: false)
+* `resmi_gazete_tarihi`: Resmi Gazete tarihi filtresi (GG/AA/YYYY)
+* `resmi_gazete_sayisi`: Resmi Gazete sayısı filtresi
+* `page`, `page_size`: Sayfalama
+
+#### **`get_mevzuat_content`** - Tam Metin Getirme
+Bir mevzuatın tam metnini Markdown formatında getirir.
+* `mevzuat_id`: Mevzuat ID'si (`search_mevzuat` sonucundan alınır, mevzuat numarası değildir)
+
+#### **`search_within_mevzuat`** - Madde Bazında Arama
+Bir mevzuatın maddeleri içinde anahtar kelime araması yapar.
+* `mevzuat_id`: Mevzuat ID'si (`search_mevzuat` sonucundan alınır)
+* `keyword`: Aranacak kelime veya Boolean ifade (AND, OR, NOT)
+* `case_sensitive`: Büyük/küçük harf duyarlılığı (varsayılan: false)
+* `max_results`: Maksimum sonuç sayısı (varsayılan: 25)
+
+#### **`get_mevzuat_gerekce`** - Kanun Gerekçesi
+Bir kanunun gerekçesini getirir (amaç, komisyon raporları, madde gerekçeleri).
+* `gerekce_id`: Gerekçe ID'si (`search_mevzuat` sonucundan alınır)
+
+#### **`get_mevzuat_madde_tree`** - İçindekiler / Madde Ağacı
+Bir mevzuatın bölüm-madde hiyerarşisini getirir.
+* `mevzuat_id`: Mevzuat ID'si (`search_mevzuat` sonucundan alınır)
+
 ### Arama Modları
 
 **Keyword Modu** (`semantic=False`, varsayılan):
@@ -196,7 +247,7 @@ keyword: "yatırımcı AND tazmin"
 ```
 Boolean operatörler (AND, OR, NOT) ile kesin kelime eşleşmesi. Operatörler BÜYÜK HARF olmalıdır.
 
-**Semantik Mod** (`semantic=True`):
+**Semantik Mod** (`semantic=True`, sadece mevzuat.gov.tr araçları):
 ```
 keyword: "yatırımcının zararının tazmini"
 ```
