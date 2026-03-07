@@ -48,5 +48,5 @@ dependencies = [
 mevzuat-mcp = "mevzuat_mcp_server:main"
 
 [tool.setuptools]
-py-modules = ["mevzuat_mcp_server", "mevzuat_client", "mevzuat_models", "article_search"]
+py-modules = ["mevzuat_mcp_server", "mevzuat_client", "mevzuat_models", "article_search", "bedesten_client", "bedesten_models"]
 packages = ["semantic_search"]

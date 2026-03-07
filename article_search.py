@@ -38,7 +38,7 @@ def split_into_articles(markdown_content: str) -> List[Dict[str, str]]:
     # - **MADDE 1 –** (dash inside **) - used in some laws
     # - **MADDE 1**- (dash outside **) - used in regulations
     # - **Madde 1 –** (title case) - used in some laws like CMK
-    pattern = r'\*\*(?:MADDE|Madde)\s+(\d+)(?:\s*[–-])?\*\*\s*-?'
+    pattern = r'\*\*(?:MADDE|Madde)\s+(\d+(?:/[A-Z])?)(?:\s*[–-])?\*\*\s*-?'
 
     # Find all article positions
     matches = list(re.finditer(pattern, markdown_content))
@@ -248,6 +248,105 @@ def search_articles_by_keyword(
     # Sort by score (most relevant first)
     matches.sort(key=lambda x: x.match_count, reverse=True)
 
+    return matches[:max_results]
+
+
+def split_plain_text_into_articles(plain_text: str) -> List[Dict[str, str]]:
+    """
+    Split plain text (HTML-stripped) content into individual articles.
+
+    For bedesten.adalet.gov.tr content where there's no markdown bold formatting.
+    Handles multiple article header formats:
+    - MADDE 1 – (standard)
+    - MADDE 61. - (dot before dash, e.g. TCK)
+    - Madde 328. - (title case + dot)
+    - MADDE 464\u00AD- (soft hyphen)
+    - MADDE 5/A – (ek maddeler)
+
+    Returns list of dicts with keys: madde_no, madde_title, madde_content
+    """
+    articles = []
+
+    # Pattern for plain text article headers (no markdown bold)
+    pattern = r'(?:MADDE|Madde)\s+(\d+(?:/[A-Z])?)\s*[.\u00AD]?\s*[-–]?'
+
+    matches = list(re.finditer(pattern, plain_text))
+    if not matches:
+        return []
+
+    for i, match in enumerate(matches):
+        madde_no = match.group(1)
+        start_pos = match.start()
+
+        if i < len(matches) - 1:
+            end_pos = matches[i + 1].start()
+        else:
+            end_pos = len(plain_text)
+
+        article_text = plain_text[start_pos:end_pos].strip()
+
+        articles.append({
+            'madde_no': madde_no,
+            'madde_title': '',
+            'madde_content': article_text,
+        })
+
+    return articles
+
+
+def search_plain_text_articles(
+    plain_text: str,
+    keyword: str,
+    case_sensitive: bool = False,
+    max_results: int = 25,
+) -> List[MaddeMatch]:
+    """
+    Search for keyword within plain-text articles (bedesten content).
+
+    Same query syntax as search_articles_by_keyword but works on plain text.
+    """
+    articles = split_plain_text_into_articles(plain_text)
+    matches = []
+
+    for article in articles:
+        content = article['madde_content']
+        matches_query, score = _matches_query(content, keyword, case_sensitive)
+
+        if matches_query and score > 0:
+            # Generate preview
+            search_content = content if case_sensitive else content.lower()
+            search_keyword = keyword if case_sensitive else keyword.lower()
+
+            preview_terms = re.findall(r'"([^"]*)"', search_keyword)
+            if not preview_terms:
+                words = re.split(r'\s+(?:AND|OR|NOT)\s+', search_keyword)
+                preview_terms = [w.strip() for w in words if w.strip() and w.strip() not in ('AND', 'OR', 'NOT')]
+
+            preview = ""
+            if preview_terms:
+                first_term = preview_terms[0] if case_sensitive else preview_terms[0].lower()
+                if first_term in search_content:
+                    keyword_pos = search_content.find(first_term)
+                    start = max(0, keyword_pos - 100)
+                    end = min(len(content), keyword_pos + len(first_term) + 100)
+                    preview = content[start:end]
+                    if start > 0:
+                        preview = "..." + preview
+                    if end < len(content):
+                        preview = preview + "..."
+
+            if not preview:
+                preview = content[:200] + "..."
+
+            matches.append(MaddeMatch(
+                madde_no=article['madde_no'],
+                madde_title=article['madde_title'],
+                madde_content=content,
+                match_count=score,
+                preview=preview,
+            ))
+
+    matches.sort(key=lambda x: x.match_count, reverse=True)
     return matches[:max_results]
 
 

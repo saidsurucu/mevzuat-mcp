@@ -15,7 +15,7 @@ from mevzuat_models import (
     MevzuatSearchResultNew,
     MevzuatArticleContent
 )
-from article_search import search_articles_by_keyword, ArticleSearchResult, format_search_results, _matches_query
+from article_search import search_articles_by_keyword, ArticleSearchResult, format_search_results, _matches_query, search_plain_text_articles
 
 # Semantic search (optional, requires OPENROUTER_API_KEY)
 from semantic_search.embedder import is_openrouter_available
@@ -37,16 +37,21 @@ logger = logging.getLogger(__name__)
 
 app = FastMCP(
     name="MevzuatGovTrMCP",
-    instructions="MCP server for mevzuat.gov.tr - Turkish legislation search and content retrieval. "
-    "Supports 9 legislation types (21 tools): "
-    "Kanun (laws), KHK (decree laws), Tüzük (statutes), Kurum Yönetmeliği (institutional regulations), "
-    "Tebliğ (communiqués), CB Kararnamesi (presidential decrees), CB Kararı (presidential decisions), "
-    "CB Yönetmeliği (presidential regulations), CB Genelgesi (presidential circulars). "
-    "Each type has search and search_within tools. All 9 search_within tools support both keyword (Boolean AND/OR/NOT) "
-    "and semantic search (natural language, requires OPENROUTER_API_KEY). Set semantic=True for semantic search. "
-    "IMPORTANT: Search is keyword-based (not by law number) - use descriptive terms like "
-    "'katma değer vergisi' instead of '3065', 'gümrük kanunu' instead of '4458'. "
-    "Bakanlar Kurulu Kararı (BKK) is not a separate type - search under CB Kararı or Kanun."
+    instructions="MCP server for Turkish legislation search and content retrieval. "
+    "Two data sources: mevzuat.gov.tr (21 tools, Playwright-based) and bedesten.adalet.gov.tr (5 tools, pure REST). "
+    "\n\n"
+    "== mevzuat.gov.tr tools (21 tools) ==\n"
+    "9 legislation types: Kanun, KHK, Tüzük, Kurum Yönetmeliği, Tebliğ, CB Kararnamesi, CB Kararı, CB Yönetmeliği, CB Genelgesi. "
+    "Each type has search and search_within tools. search_within supports keyword (AND/OR/NOT) and semantic search (OPENROUTER_API_KEY). "
+    "IMPORTANT: These search tools are keyword-based (not by law number) - use 'katma değer vergisi' not '3065'. "
+    "\n\n"
+    "== bedesten.adalet.gov.tr tools (5 tools) ==\n"
+    "Alternative API, no auth needed, supports 12 legislation types and Solr/Lucene search operators. "
+    "Tools: search_mevzuat (unified search with type filter, supports law number search), "
+    "get_mevzuat_content (full text), search_within_mevzuat (article keyword search), "
+    "get_mevzuat_gerekce (law rationale/gerekçe), get_mevzuat_madde_tree (article tree/TOC). "
+    "Solr operators: \"exact\", +required, -prohibited, wildcard*, fuzzy~, \"proximity\"~N, boost^N. "
+    "NOTE: AND/OR/NOT do NOT work in search_mevzuat - use +term1 +term2 instead."
 )
 
 # Initialize client with caching enabled (1 hour TTL by default)
@@ -1844,6 +1849,392 @@ async def search_within_cbgenelge(
 
     except Exception as e:
         logger.exception(f"Error in tool 'search_within_cbgenelge' for {mevzuat_no}")
+        return f"An unexpected error occurred: {str(e)}"
+
+
+# ============================================================================
+# Bedesten API tools (bedesten.adalet.gov.tr - alternative, no auth needed)
+# ============================================================================
+
+from bedesten_client import BedestenClient, _strip_html
+from bedesten_models import BedMaddeNode
+
+bedesten_client = BedestenClient(cache_ttl=3600, enable_cache=True)
+
+# Valid type codes for mevzuatTurList filter
+_BED_VALID_TYPES = {
+    "KANUN", "CB_KARARNAME", "YONETMELIK", "CB_YONETMELIK", "CB_KARAR",
+    "CB_GENELGE", "KHK", "TUZUK", "KKY", "UY", "TEBLIGLER", "MULGA",
+}
+
+
+def _flatten_tree(nodes: list[BedMaddeNode]) -> list[BedMaddeNode]:
+    """Flatten a nested tree of madde nodes into a flat list."""
+    flat = []
+    for node in nodes:
+        flat.append(node)
+        if node.children:
+            flat.extend(_flatten_tree(node.children))
+    return flat
+
+
+def _format_tree(nodes: list[BedMaddeNode], indent: int = 0) -> str:
+    """Format article tree as indented text."""
+    lines = []
+    for node in nodes:
+        prefix = "  " * indent
+        label = node.madde_baslik or ""
+        if not label:
+            no = str(node.madde_no) if node.madde_no is not None else ""
+            title = node.title or node.description or ""
+            label = f"{no}: {title}" if no and title else (no or title)
+        mid = node.madde_id or ""
+        gid = f" | gerekceId:{node.gerekce_id}" if node.gerekce_id else ""
+        lines.append(f"{prefix}- {label} (maddeId:{mid}{gid})")
+        if node.children:
+            lines.append(_format_tree(node.children, indent + 1))
+    return "\n".join(lines)
+
+
+@app.tool()
+async def search_mevzuat(
+    phrase: str = Field(
+        "",
+        description=(
+            "Full-text search in document content (Solr/Lucene syntax). "
+            "Searches inside the legislation text, not just the title. "
+            "Leave empty to browse/list or use mevzuat_adi for title search. "
+            "Examples: 'ticaret', '\"katma değer vergisi\"', 'yatırımcı'"
+        ),
+    ),
+    mevzuat_adi: str = Field(
+        "",
+        description=(
+            "Title/keyword search (Aranacak Kavram). Searches in legislation title/name. "
+            "Use Turkish keywords, not law numbers. "
+            "Examples: 'ticaret kanunu', 'ceza', 'gümrük', 'sermaye piyasası', 'gelir vergisi'. "
+            "Can be used alone or together with phrase for combined filtering."
+        ),
+    ),
+    mevzuat_no: Optional[str] = Field(
+        None,
+        description=(
+            "Legislation number filter. Directly filters by the official number. "
+            "E.g., '5237' for Türk Ceza Kanunu, '6102' for Türk Ticaret Kanunu, '6362' for Sermaye Piyasası Kanunu."
+        ),
+    ),
+    mevzuat_tur: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by legislation type. Leave empty to search all types. "
+            "Single type or comma-separated for multiple types. "
+            "Types: KANUN (Kanunlar), CB_KARARNAME (Cumhurbaşkanı Kararnameleri), "
+            "YONETMELIK (Bakanlar Kurulu Yönetmelikleri), CB_YONETMELIK (Cumhurbaşkanlığı Yönetmelikleri), "
+            "CB_KARAR (Cumhurbaşkanı Kararları), CB_GENELGE (Cumhurbaşkanlığı Genelgeleri), "
+            "KHK (Kanun Hükmünde Kararnameler), TUZUK (Tüzükler), "
+            "KKY (Kurum ve Kuruluş Yönetmelikleri), UY (Üniversite Yönetmelikleri), "
+            "TEBLIGLER (Tebliğler), MULGA (Mülga Mevzuat). "
+            "Examples: 'KANUN', 'KANUN,KHK', 'TEBLIGLER,KKY'"
+        ),
+    ),
+    basliktaAra: bool = Field(
+        True,
+        description=(
+            "When True (default), mevzuat_adi searches only in legislation titles. "
+            "When False, mevzuat_adi searches in both title and content."
+        ),
+    ),
+    tamCumle: bool = Field(
+        False,
+        description=(
+            "Exact phrase match for mevzuat_adi. "
+            "When True, the entire mevzuat_adi text must appear as an exact phrase. "
+            "When False (default), individual words are matched. "
+            "Example: 'katma değer vergisi' with tamCumle=True finds only exact matches."
+        ),
+    ),
+    resmi_gazete_tarihi: Optional[str] = Field(
+        None,
+        description="Official Gazette date filter in DD/MM/YYYY format. E.g., '30/12/2012'.",
+    ),
+    resmi_gazete_sayisi: Optional[str] = Field(
+        None,
+        description="Official Gazette issue number filter. E.g., '28513'.",
+    ),
+    page: int = Field(1, ge=1, description="Page number (1-based, default: 1)"),
+    page_size: int = Field(25, ge=1, le=100, description="Results per page (1-100, default: 25)"),
+) -> str:
+    """
+    Search or browse all Turkish legislation on bedesten.adalet.gov.tr.
+
+    Covers 12 legislation types: Kanunlar, Cumhurbaşkanı Kararnameleri, Bakanlar Kurulu Yönetmelikleri,
+    CB Yönetmelikleri, CB Kararları, CB Genelgeleri, KHK'lar, Tüzükler,
+    Kurum/Kuruluş Yönetmelikleri, Üniversite Yönetmelikleri, Tebliğler, Mülga Mevzuat.
+
+    Search modes:
+    - mevzuat_adi: Title/keyword search (recommended, searches legislation name)
+    - phrase: Full-text content search (Solr syntax, searches inside document body)
+    - mevzuat_no: Direct number lookup (e.g., '5237' for TCK)
+    - Browse: Leave all empty to list by type
+
+    Workflow: Use this tool first to find legislation → then use mevzuatId from results with:
+    - get_mevzuat_content: Full document text
+    - search_within_mevzuat: Search articles within a document
+    - get_mevzuat_madde_tree: Table of contents / article tree
+    - get_mevzuat_gerekce: Law rationale (if gerekceId is present in results)
+    """
+    try:
+        tur_list = None
+        if mevzuat_tur:
+            tur_list = [t.strip().upper() for t in mevzuat_tur.split(",") if t.strip().upper() in _BED_VALID_TYPES]
+            if not tur_list:
+                return f"Invalid mevzuat_tur: '{mevzuat_tur}'. Valid types: {', '.join(sorted(_BED_VALID_TYPES))}"
+
+        # API requires mevzuatTurList for browsing (no search terms). If no type given, search all.
+        if not phrase and not mevzuat_adi and not mevzuat_no and not tur_list:
+            tur_list = list(_BED_VALID_TYPES)
+
+        sort_field = "RESMI_GAZETE_TARIHI"
+        result = await bedesten_client.search_documents(
+            phrase=phrase, mevzuat_adi=mevzuat_adi, mevzuat_no=mevzuat_no,
+            mevzuat_tur_list=tur_list, basliktaAra=basliktaAra, tamCumle=tamCumle,
+            resmi_gazete_tarihi=resmi_gazete_tarihi, resmi_gazete_sayisi=resmi_gazete_sayisi,
+            page=page, page_size=page_size,
+            sort_field=sort_field, sort_direction="desc",
+        )
+
+        if result.error_message:
+            return f"Search error: {result.error_message}"
+
+        search_desc = ""
+        if phrase:
+            search_desc += f"phrase='{phrase}'"
+        if mevzuat_adi:
+            search_desc += f"{' + ' if search_desc else ''}title='{mevzuat_adi}'"
+
+        if not result.documents:
+            return f"No results found for {search_desc or 'browse'}" + (f" (type: {mevzuat_tur})" if mevzuat_tur else "")
+
+        output = []
+        if search_desc:
+            output.append(f"Search: {search_desc}" + (f" | Type: {mevzuat_tur}" if mevzuat_tur else ""))
+        else:
+            output.append(f"Browse" + (f" | Type: {mevzuat_tur}" if mevzuat_tur else " | All types"))
+        output.append(f"Results: {result.total_results} total (page {page})")
+        output.append("")
+
+        for doc in result.documents:
+            tur_name = ""
+            if isinstance(doc.mevzuat_tur, dict):
+                tur_name = doc.mevzuat_tur.get("description", doc.mevzuat_tur.get("name", ""))
+            elif isinstance(doc.mevzuat_tur, str):
+                tur_name = doc.mevzuat_tur
+
+            line = f"- [{doc.mevzuat_no}] {doc.mevzuat_adi}"
+            if tur_name:
+                line += f" ({tur_name})"
+            line += f" | mevzuatId: {doc.mevzuat_id}"
+            if doc.resmi_gazete_tarihi:
+                # Format date: strip time portion
+                rg = doc.resmi_gazete_tarihi
+                if "T" in rg:
+                    rg = rg.split("T")[0]
+                line += f" | RG: {rg}"
+            if doc.gerekce_id:
+                line += f" | gerekceId: {doc.gerekce_id}"
+            output.append(line)
+
+        return "\n".join(output)
+
+    except Exception as e:
+        logger.exception("Error in search_mevzuat")
+        return f"An unexpected error occurred: {str(e)}"
+
+
+@app.tool()
+async def get_mevzuat_content(
+    mevzuat_id: str = Field(
+        ...,
+        description=(
+            "Legislation ID from search_mevzuat results (mevzuatId field). "
+            "This is a string ID (e.g., '345097'), NOT the law number. "
+            "First call search_mevzuat to get the mevzuatId."
+        ),
+    ),
+) -> str:
+    """
+    Retrieve the full content of a Turkish legislation document from bedesten.adalet.gov.tr.
+
+    Returns the complete text in plain format (HTML tags stripped).
+    Use mevzuatId from search_mevzuat results (not the law number).
+
+    WARNING: Large legislation (e.g., TCK 5237, TTK 6102) can be 100K+ characters.
+    For large documents, prefer search_within_mevzuat to find specific articles
+    instead of loading the entire text.
+
+    Workflow: search_mevzuat → get mevzuatId → get_mevzuat_content
+    """
+    try:
+        plain = await bedesten_client.get_document_plain_text(mevzuat_id)
+        if not plain:
+            return f"Error: No content found for mevzuatId {mevzuat_id}"
+        return plain
+    except Exception as e:
+        logger.exception("Error in get_mevzuat_content")
+        return f"An unexpected error occurred: {str(e)}"
+
+
+@app.tool()
+async def search_within_mevzuat(
+    mevzuat_id: str = Field(
+        ...,
+        description=(
+            "Legislation ID from search_mevzuat results (mevzuatId field). "
+            "This is a string ID (e.g., '345097'), NOT the law number. "
+            "First call search_mevzuat to get the mevzuatId."
+        ),
+    ),
+    keyword: str = Field(
+        ...,
+        description=(
+            "Search query with Boolean operators (operators MUST be uppercase). "
+            "Simple keyword: 'yatırımcı'. "
+            "AND (both required): 'yatırımcı AND tazmin'. "
+            "OR (at least one): 'yatırımcı OR müşteri'. "
+            "NOT (exclude): 'yatırımcı NOT kurum'. "
+            "Exact phrase: '\"mali sıkıntı\"'. "
+            "Combined: '\"mali sıkıntı\" AND yatırımcı NOT kurum'."
+        ),
+    ),
+    case_sensitive: bool = Field(False, description="Case-sensitive matching (default: false)"),
+    max_results: int = Field(25, ge=1, le=50, description="Maximum number of matching articles to return (1-50, default: 25)"),
+) -> str:
+    """
+    Search within a specific legislation's articles on bedesten.adalet.gov.tr.
+
+    Ideal for large legislation where get_mevzuat_content would return too much text.
+    Fetches the full document, splits into individual articles (MADDE), and applies
+    keyword search with Boolean operators. Returns only matching articles sorted by
+    relevance score (match frequency).
+
+    Each result includes: article number (madde no), match count, and full article text.
+
+    Workflow: search_mevzuat → get mevzuatId → search_within_mevzuat(mevzuatId, keyword)
+
+    Example: To find investor compensation articles in Capital Markets Law:
+    1. search_mevzuat(mevzuat_adi='sermaye piyasası', mevzuat_tur='KANUN') → mevzuatId
+    2. search_within_mevzuat(mevzuat_id='...', keyword='yatırımcı AND tazmin')
+    """
+    try:
+        plain = await bedesten_client.get_document_plain_text(mevzuat_id)
+        if not plain:
+            return f"Error: No content found for mevzuatId {mevzuat_id}"
+
+        matches = search_plain_text_articles(plain, keyword, case_sensitive, max_results)
+
+        if not matches:
+            return f"No articles matching '{keyword}' found in mevzuatId {mevzuat_id}"
+
+        result = ArticleSearchResult(
+            mevzuat_no=str(mevzuat_id),
+            mevzuat_tur=0,
+            keyword=keyword,
+            total_matches=len(matches),
+            matching_articles=matches,
+        )
+        return format_search_results(result)
+
+    except Exception as e:
+        logger.exception("Error in search_within_mevzuat")
+        return f"An unexpected error occurred: {str(e)}"
+
+
+@app.tool()
+async def get_mevzuat_gerekce(
+    gerekce_id: str = Field(
+        ...,
+        description=(
+            "Gerekçe ID from search_mevzuat results (gerekceId field, e.g., '2049'). "
+            "Only available for laws (KANUN) that have a published rationale. "
+            "Check if gerekceId exists in search_mevzuat results before calling."
+        ),
+    ),
+) -> str:
+    """
+    Retrieve the law rationale (gerekçe / kanun gerekçesi) from bedesten.adalet.gov.tr.
+
+    The gerekçe contains:
+    - Purpose and reasoning behind the law (kanunun amacı ve gerekçesi)
+    - Parliamentary committee reports (komisyon raporları)
+    - Article-by-article justifications (madde gerekçeleri)
+
+    Only available for KANUN type legislation that has a published rationale.
+    Not all laws have a gerekçe — check if gerekceId is present in search_mevzuat results.
+
+    Workflow: search_mevzuat → check gerekceId in results → get_mevzuat_gerekce(gerekceId)
+    """
+    try:
+        result = await bedesten_client.get_gerekce_content(gerekce_id)
+        if result.error_message:
+            return f"Error fetching gerekçe: {result.error_message}"
+        if not result.content:
+            return f"Error: No gerekçe content found for gerekceId {gerekce_id}"
+
+        plain = _strip_html(result.content)
+        if not plain:
+            return f"Error: Gerekçe content is empty for gerekceId {gerekce_id}"
+
+        return plain
+    except Exception as e:
+        logger.exception("Error in get_mevzuat_gerekce")
+        return f"An unexpected error occurred: {str(e)}"
+
+
+@app.tool()
+async def get_mevzuat_madde_tree(
+    mevzuat_id: str = Field(
+        ...,
+        description=(
+            "Legislation ID from search_mevzuat results (mevzuatId field). "
+            "This is a string ID (e.g., '345097'), NOT the law number. "
+            "First call search_mevzuat to get the mevzuatId."
+        ),
+    ),
+) -> str:
+    """
+    Get the article tree (table of contents / içindekiler) of a Turkish legislation from bedesten.adalet.gov.tr.
+
+    Returns a hierarchical structure showing:
+    - Bölüm/Kısım (chapters/parts) as parent nodes
+    - Madde (articles) as leaf nodes with maddeId, number, and title
+    - Each node may have a gerekceId for article-level rationale
+
+    Works well with: KANUN, CB_KARARNAME, KHK, TUZUK, MULGA.
+    May return empty for: CB_KARAR, CB_GENELGE, TEBLIGLER (these often lack structured articles).
+
+    Use this to understand the structure of a large law before diving into specific articles
+    with search_within_mevzuat or get_mevzuat_content.
+
+    Workflow: search_mevzuat → get mevzuatId → get_mevzuat_madde_tree(mevzuatId)
+    """
+    try:
+        nodes, err = await bedesten_client.get_article_tree(mevzuat_id)
+        if err:
+            return f"Article tree not available for mevzuatId {mevzuat_id}: {err}"
+        if not nodes:
+            return f"No article tree available for mevzuatId {mevzuat_id}."
+
+        output = []
+        output.append(f"Article Tree for mevzuatId: {mevzuat_id}")
+        flat = _flatten_tree(nodes)
+        output.append(f"Total nodes: {len(flat)}")
+        output.append("")
+        output.append(_format_tree(nodes))
+
+        return "\n".join(output)
+
+    except Exception as e:
+        logger.exception("Error in get_mevzuat_madde_tree")
         return f"An unexpected error occurred: {str(e)}"
 
 
