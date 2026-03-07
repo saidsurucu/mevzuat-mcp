@@ -9,6 +9,7 @@ Responses use:
   {"data": ..., "metadata": {"FMTY": "SUCCESS"|"ERROR", ...}}
 """
 import base64
+from datetime import datetime, timedelta
 import html
 import logging
 import re
@@ -111,6 +112,28 @@ class BedestenClient:
     # ------------------------------------------------------------------
     # 1. Search / list documents
     # ------------------------------------------------------------------
+    @staticmethod
+    def _to_iso8601_start(date_str: str) -> str:
+        """Convert DD/MM/YYYY to ISO 8601 UTC for range start.
+
+        Midnight of the given date in Turkey (UTC+3) = previous day 21:00 UTC.
+        E.g. 18/03/2026 → 2026-03-17T21:00:00.000Z
+        """
+        dt = datetime.strptime(date_str.strip(), "%d/%m/%Y")
+        prev = dt - timedelta(days=1)
+        return prev.strftime("%Y-%m-%dT21:00:00.000Z")
+
+    @staticmethod
+    def _to_iso8601_end(date_str: str) -> str:
+        """Convert DD/MM/YYYY to ISO 8601 UTC for range end.
+
+        Midnight of the day AFTER the given date in Turkey (UTC+3) = given day 21:00 UTC.
+        This ensures the entire end date is included in the range.
+        E.g. 18/03/2026 → 2026-03-18T21:00:00.000Z
+        """
+        dt = datetime.strptime(date_str.strip(), "%d/%m/%Y")
+        return dt.strftime("%Y-%m-%dT21:00:00.000Z")
+
     async def search_documents(
         self,
         phrase: str = "",
@@ -119,7 +142,8 @@ class BedestenClient:
         mevzuat_tur_list: Optional[List[str]] = None,
         basliktaAra: bool = True,
         tamCumle: bool = False,
-        resmi_gazete_tarihi: Optional[str] = None,
+        resmi_gazete_tarihi_start: Optional[str] = None,
+        resmi_gazete_tarihi_end: Optional[str] = None,
         resmi_gazete_sayisi: Optional[str] = None,
         page: int = 1,
         page_size: int = 25,
@@ -136,7 +160,8 @@ class BedestenClient:
             mevzuat_tur_list: Filter by types, e.g. ["KANUN", "KHK"]
             basliktaAra: Search in title only (default True).
             tamCumle: Exact phrase match (default False).
-            resmi_gazete_tarihi: Official Gazette date filter (DD/MM/YYYY).
+            resmi_gazete_tarihi_start: Start date filter (DD/MM/YYYY). Converted to ISO 8601 for API.
+            resmi_gazete_tarihi_end: End date filter (DD/MM/YYYY). Converted to ISO 8601 for API.
             resmi_gazete_sayisi: Official Gazette number filter.
             page: Page number (1-based)
             page_size: Results per page
@@ -161,8 +186,10 @@ class BedestenClient:
             inner["basliktaAra"] = False
         if tamCumle:
             inner["tamCumle"] = True
-        if resmi_gazete_tarihi:
-            inner["resmiGazeteTarihi"] = resmi_gazete_tarihi
+        if resmi_gazete_tarihi_start:
+            inner["resmiGazeteTarihiStart"] = self._to_iso8601_start(resmi_gazete_tarihi_start)
+        if resmi_gazete_tarihi_end:
+            inner["resmiGazeteTarihiEnd"] = self._to_iso8601_end(resmi_gazete_tarihi_end)
         if resmi_gazete_sayisi:
             inner["resmiGazeteSayisi"] = resmi_gazete_sayisi
 

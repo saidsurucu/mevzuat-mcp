@@ -1957,9 +1957,23 @@ async def search_mevzuat(
             "Example: 'katma değer vergisi' with tamCumle=True finds only exact matches."
         ),
     ),
-    resmi_gazete_tarihi: Optional[str] = Field(
+    resmi_gazete_tarihi_start: Optional[str] = Field(
         None,
-        description="Official Gazette date filter in DD/MM/YYYY format. E.g., '30/12/2012'.",
+        description=(
+            "Start date filter for Official Gazette date range (DD/MM/YYYY format). "
+            "Filters legislation published on or after this date. "
+            "E.g., '01/01/2024' to find legislation from 2024 onwards. "
+            "Use with resmi_gazete_tarihi_end for a specific date range."
+        ),
+    ),
+    resmi_gazete_tarihi_end: Optional[str] = Field(
+        None,
+        description=(
+            "End date filter for Official Gazette date range (DD/MM/YYYY format). "
+            "Filters legislation published on or before this date. "
+            "E.g., '31/12/2024' to find legislation up to end of 2024. "
+            "Use with resmi_gazete_tarihi_start for a specific date range."
+        ),
     ),
     resmi_gazete_sayisi: Optional[str] = Field(
         None,
@@ -1980,6 +1994,11 @@ async def search_mevzuat(
     - phrase: Full-text content search (Solr syntax, searches inside document body)
     - mevzuat_no: Direct number lookup (e.g., '5237' for TCK)
     - Browse: Leave all empty to list by type
+
+    Date range filtering:
+    - Use resmi_gazete_tarihi_start and/or resmi_gazete_tarihi_end (DD/MM/YYYY)
+    - Single date: set both start and end to the same date
+    - Year range: '01/01/2024' to '31/12/2024'
 
     Workflow: Use this tool first to find legislation → then use mevzuatId from results with:
     - get_mevzuat_content: Full document text
@@ -2002,7 +2021,9 @@ async def search_mevzuat(
         result = await bedesten_client.search_documents(
             phrase=phrase, mevzuat_adi=mevzuat_adi, mevzuat_no=mevzuat_no,
             mevzuat_tur_list=tur_list, basliktaAra=basliktaAra, tamCumle=tamCumle,
-            resmi_gazete_tarihi=resmi_gazete_tarihi, resmi_gazete_sayisi=resmi_gazete_sayisi,
+            resmi_gazete_tarihi_start=resmi_gazete_tarihi_start,
+            resmi_gazete_tarihi_end=resmi_gazete_tarihi_end,
+            resmi_gazete_sayisi=resmi_gazete_sayisi,
             page=page, page_size=page_size,
             sort_field=sort_field, sort_direction="desc",
         )
