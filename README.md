@@ -63,6 +63,30 @@ Hepsi bu kadar! Artık Mevzuat MCP ile konuşabilirsiniz.
 > **Not:** Bu ücretsiz sunucu topluluk için sağlanmaktadır. Yoğun kullanım için kendi sunucunuzu kurmanız önerilir.
 
 ---
+🪐 **Google Antigravity ile Kullanım**
+
+1. **Agent session** açın ve editörün yan panelindeki **"…"** dropdown menüsüne tıklayın
+2. **MCP Servers** seçeneğini seçin - MCP Store açılacak
+3. Üstteki **Manage MCP Servers** butonuna tıklayın
+4. **View raw config** seçeneğine tıklayın
+5. `mcp_config.json` dosyasına aşağıdaki yapılandırmayı ekleyin:
+
+```json
+{
+  "mcpServers": {
+    "mevzuat-mcp": {
+      "serverUrl": "https://mevzuat.surucu.dev/mcp/",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+  }
+}
+```
+
+> 💡 **İpucu:** Remote MCP sayesinde Python, uv veya herhangi bir kurulum yapmadan doğrudan Google Antigravity üzerinden Mevzuat Bilgi Sistemi'ne erişebilirsiniz!
+
+---
 🚀 **Claude Haricindeki Modellerle Kullanmak İçin Çok Kolay Kurulum (Örnek: 5ire için)**
 
 Bu bölüm, Mevzuat MCP aracını 5ire gibi Claude Desktop dışındaki MCP istemcileriyle kullanmak isteyenler içindir.
