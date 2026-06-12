@@ -39,6 +39,8 @@ HEADERS = {
 }
 
 APP_NAME = "UyapMevzuat"
+BEDESTEN_DEFAULT_PAGE_SIZE = 20
+BEDESTEN_MAX_PAGE_SIZE = 20
 
 
 def _wrap(data: dict) -> dict:
@@ -146,7 +148,7 @@ class BedestenClient:
         resmi_gazete_tarihi_end: Optional[str] = None,
         resmi_gazete_sayisi: Optional[str] = None,
         page: int = 1,
-        page_size: int = 25,
+        page_size: int = BEDESTEN_DEFAULT_PAGE_SIZE,
         sort_field: str = "RESMI_GAZETE_TARIHI",
         sort_direction: str = "desc",
     ) -> BedSearchResult:
@@ -164,10 +166,16 @@ class BedestenClient:
             resmi_gazete_tarihi_end: End date filter (DD/MM/YYYY). Converted to ISO 8601 for API.
             resmi_gazete_sayisi: Official Gazette number filter.
             page: Page number (1-based)
-            page_size: Results per page
+            page_size: Results per page. bedesten.adalet.gov.tr rejects values over 20.
             sort_field: RESMI_GAZETE_TARIHI, MEVZUAT_ADI, MEVZUAT_NO, etc.
             sort_direction: asc or desc
         """
+        if page_size < 1 or page_size > BEDESTEN_MAX_PAGE_SIZE:
+            return BedSearchResult(
+                error_message=f"page_size must be between 1 and {BEDESTEN_MAX_PAGE_SIZE} for bedesten.adalet.gov.tr",
+                query_used=phrase,
+            )
+
         inner: Dict[str, Any] = {
             "pageSize": page_size,
             "pageNumber": page,
