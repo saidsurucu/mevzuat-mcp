@@ -86,6 +86,48 @@ Hepsi bu kadar! Artık Mevzuat MCP ile konuşabilirsiniz.
 
 > 💡 **İpucu:** Remote MCP sayesinde Python, uv veya herhangi bir kurulum yapmadan doğrudan Google Antigravity üzerinden Mevzuat Bilgi Sistemi'ne erişebilirsiniz!
 
+### Lokal `uv` Kurulumu — Kopyala-Yapıştır
+
+> **Ön Gereksinimler:** Bilgisayarınızda **Python**, **`uv`** ([kurulum](https://docs.astral.sh/uv/getting-started/installation/)) ve **Node.js** ([indir](https://nodejs.org/en/download)) kurulu olmalı. (Node.js yalnızca aşağıdaki kurulum komutunu çalıştırmak için gerekir; MCP'yi `uvx` çalıştırır.)
+
+Aşağıdaki **bloğun tamamını** terminale yapıştırın. Komut, Antigravity'nin okuduğu `~/.gemini/config/mcp_config.json` dosyasını sizin yerinize oluşturur/günceller (varsa diğer sunucularınız korunur):
+
+**macOS / Linux** (Terminal):
+
+```bash
+node - <<'MEVZUAT'
+const fs=require("fs"),os=require("os"),path=require("path");
+const dir=path.join(os.homedir(),".gemini","config"),file=path.join(dir,"mcp_config.json");
+fs.mkdirSync(dir,{recursive:true});
+let cfg={};try{cfg=JSON.parse(fs.readFileSync(file,"utf8"))}catch{}
+if(typeof cfg!=="object"||cfg===null||Array.isArray(cfg))cfg={};
+if(typeof cfg.mcpServers!=="object"||cfg.mcpServers===null)cfg.mcpServers={};
+cfg.mcpServers["mevzuat-mcp"]={command:"uvx",args:["--from","git+https://github.com/saidsurucu/mevzuat-mcp","mevzuat-mcp"]};
+fs.writeFileSync(file,JSON.stringify(cfg,null,2)+"\n");
+console.log("mevzuat-mcp eklendi -> "+file);
+MEVZUAT
+```
+
+**Windows** (PowerShell):
+
+```powershell
+@'
+const fs=require("fs"),os=require("os"),path=require("path");
+const dir=path.join(os.homedir(),".gemini","config"),file=path.join(dir,"mcp_config.json");
+fs.mkdirSync(dir,{recursive:true});
+let cfg={};try{cfg=JSON.parse(fs.readFileSync(file,"utf8"))}catch{}
+if(typeof cfg!=="object"||cfg===null||Array.isArray(cfg))cfg={};
+if(typeof cfg.mcpServers!=="object"||cfg.mcpServers===null)cfg.mcpServers={};
+cfg.mcpServers["mevzuat-mcp"]={command:"uvx",args:["--from","git+https://github.com/saidsurucu/mevzuat-mcp","mevzuat-mcp"]};
+fs.writeFileSync(file,JSON.stringify(cfg,null,2)+"\n");
+console.log("mevzuat-mcp eklendi -> "+file);
+'@ | node -
+```
+
+Komut `mevzuat-mcp eklendi -> ...` çıktısını verdiğinde kurulum tamamlanmıştır. Antigravity'yi (açıksa kapatıp) yeniden başlatın; `mevzuat-mcp` araçları otomatik yüklenir.
+
+> 💡 **İpucu:** Lokal kurulumda mevzuat kaynaklarına erişim doğrudan bilgisayarınızda `uvx` ile çalışır; uzaktan sunucuya ihtiyaç duymaz.
+
 ---
 🚀 **Claude Haricindeki Modellerle Kullanmak İçin Çok Kolay Kurulum (Örnek: 5ire için)**
 
