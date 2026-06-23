@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mevzuat-mcp"
 version = "1.0.0"
-description = "MCP Server for Turkish Legislation - 18 tools for comprehensive access to Turkish laws, decrees, regulations and circulars"
+description = "MCP Server for Turkish Legislation - 26 tools for comprehensive access to Turkish laws, decrees, regulations and circulars"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}

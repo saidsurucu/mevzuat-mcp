@@ -282,12 +282,12 @@ Tüm 12 mevzuat türünde başlık ve içerik araması yapar.
 * `mevzuat_tur`: Mevzuat türü filtresi (KANUN, KHK, TUZUK, YONETMELIK, CB_KARARNAME, CB_KARAR, CB_YONETMELIK, CB_GENELGE, KKY, UY, TEBLIGLER, MULGA)
 * `basliktaAra`: Sadece başlıkta ara (varsayılan: true)
 * `tamCumle`: Tam cümle eşleşmesi (varsayılan: false)
-* `resmi_gazete_tarihi`: Resmi Gazete tarihi filtresi (GG/AA/YYYY)
+* `resmi_gazete_tarihi_start`, `resmi_gazete_tarihi_end`: Resmi Gazete tarih aralığı filtresi (GG/AA/YYYY)
 * `resmi_gazete_sayisi`: Resmi Gazete sayısı filtresi
-* `page`, `page_size`: Sayfalama
+* `page`, `page_size`: Sayfalama (`page_size` varsayılan 20, en fazla 20; Bedesten API daha büyük değerleri reddeder)
 
 #### **`get_mevzuat_content`** - Tam Metin Getirme
-Bir mevzuatın tam metnini Markdown formatında getirir.
+Bir mevzuatın tam metnini düz metin olarak getirir.
 * `mevzuat_id`: Mevzuat ID'si (`search_mevzuat` sonucundan alınır, mevzuat numarası değildir)
 
 #### **`search_within_mevzuat`** - Madde Bazında Arama

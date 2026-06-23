@@ -40,6 +40,11 @@ app = FastMCP(
     instructions="MCP server for Turkish legislation search and content retrieval. "
     "Two data sources: mevzuat.gov.tr (21 tools, Playwright-based) and bedesten.adalet.gov.tr (5 tools, pure REST). "
     "\n\n"
+    "== Tool choice quick guide ==\n"
+    "If the user provides an official legislation number such as 3065, 5237, 6102, or 6362, use bedesten search_mevzuat with mevzuat_no. "
+    "If the user provides a topic/title phrase, use either the relevant mevzuat.gov.tr type-specific search tool or bedesten search_mevzuat with mevzuat_adi/phrase. "
+    "After search_mevzuat, use the returned mevzuatId with get_mevzuat_content, search_within_mevzuat, or get_mevzuat_madde_tree; mevzuatId is not the legislation number. "
+    "\n\n"
     "== mevzuat.gov.tr tools (21 tools) ==\n"
     "9 legislation types: Kanun, KHK, Tüzük, Kurum Yönetmeliği, Tebliğ, CB Kararnamesi, CB Kararı, CB Yönetmeliği, CB Genelgesi. "
     "Each type has search and search_within tools. search_within supports keyword (AND/OR/NOT) and semantic search (OPENROUTER_API_KEY). "
@@ -47,6 +52,7 @@ app = FastMCP(
     "\n\n"
     "== bedesten.adalet.gov.tr tools (5 tools) ==\n"
     "Alternative API, no auth needed, supports 12 legislation types and Solr/Lucene search operators. "
+    "page_size must be 1-20 because the upstream API rejects larger pages. "
     "Tools: search_mevzuat (unified search with type filter, supports law number search), "
     "get_mevzuat_content (full text), search_within_mevzuat (article keyword search), "
     "get_mevzuat_gerekce (law rationale/gerekçe), get_mevzuat_madde_tree (article tree/TOC). "
@@ -1884,7 +1890,12 @@ async def search_within_cbgenelge(
 # Bedesten API tools (bedesten.adalet.gov.tr - alternative, no auth needed)
 # ============================================================================
 
-from bedesten_client import BedestenClient, _strip_html
+from bedesten_client import (
+    BEDESTEN_DEFAULT_PAGE_SIZE,
+    BEDESTEN_MAX_PAGE_SIZE,
+    BedestenClient,
+    _strip_html,
+)
 from bedesten_models import BedMaddeNode
 
 bedesten_client = BedestenClient(cache_ttl=3600, enable_cache=True)
@@ -2014,7 +2025,12 @@ async def search_mevzuat(
         description="Official Gazette issue number filter. E.g., '28513'.",
     ),
     page: int = Field(1, ge=1, description="Page number (1-based, default: 1)"),
-    page_size: int = Field(25, ge=1, le=100, description="Results per page (1-100, default: 25)"),
+    page_size: int = Field(
+        BEDESTEN_DEFAULT_PAGE_SIZE,
+        ge=1,
+        le=BEDESTEN_MAX_PAGE_SIZE,
+        description=f"Results per page (1-{BEDESTEN_MAX_PAGE_SIZE}, default: {BEDESTEN_DEFAULT_PAGE_SIZE}). bedesten.adalet.gov.tr rejects larger values.",
+    ),
 ) -> str:
     """
     Search or browse all Turkish legislation on bedesten.adalet.gov.tr.
